@@ -41,6 +41,14 @@ class AcoParamsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "initial_pheromone"):
             AcoParams(initial_pheromone=0.0).validate()
 
+    def test_validate_rejects_out_of_range_local_evaporation_rate(self) -> None:
+        with self.assertRaisesRegex(ValueError, "local_evaporation_rate"):
+            AcoParams(local_evaporation_rate=1.0).validate()
+
+    def test_validate_rejects_negative_elite_weight(self) -> None:
+        with self.assertRaisesRegex(ValueError, "elite_weight"):
+            AcoParams(elite_weight=-0.1).validate()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -29,6 +29,9 @@ class CliTests(unittest.TestCase):
                         "evaporation_rate": 0.25,
                         "pheromone_deposit_q": 88.0,
                         "initial_pheromone": 0.8,
+                        "local_evaporation_rate": 0.12,
+                        "elite_enabled": True,
+                        "elite_weight": 1.7,
                         "random_seed": 7,
                     }
                 ),
@@ -44,6 +47,9 @@ class CliTests(unittest.TestCase):
                 evaporation_rate=None,
                 pheromone_deposit_q=99.0,
                 initial_pheromone=None,
+                local_evaporation_rate=None,
+                elite_weight=3.0,
+                disable_elite=True,
                 random_seed=None,
             )
 
@@ -53,6 +59,9 @@ class CliTests(unittest.TestCase):
         self.assertEqual(params.iterations, 55)
         self.assertEqual(params.alpha, 1.5)
         self.assertEqual(params.pheromone_deposit_q, 99.0)
+        self.assertEqual(params.local_evaporation_rate, 0.12)
+        self.assertEqual(params.elite_weight, 3.0)
+        self.assertFalse(params.elite_enabled)
         self.assertEqual(params.random_seed, 7)
 
 

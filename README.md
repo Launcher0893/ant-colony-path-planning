@@ -16,10 +16,11 @@
 ## 功能概览
 - 读取 `CSV` 栅格地图
 - 支持 `8` 邻域路径规划，禁止对角穿角
-- 支持配置蚂蚁数量、迭代次数、`alpha`、`beta`、`rho`、`Q` 和初始信息素
+- 支持配置蚂蚁数量、迭代次数、`alpha`、`beta`、全局/局部 `rho`、`Q`、初始信息素和精英强化
 - 支持显式保存路径图、收敛曲线、路径坐标和结构化结果
 - 提供手工地图集和地图生成脚本
-- 显示最终路径、路径长度、路径坐标、运行耗时和收敛曲线
+- 提供结果汇总脚本和实验记录模板
+- 显示最终路径、路径长度、路径坐标、运行耗时、成功路径数和收敛曲线
 - 同时支持 `PyCharm`、`VS Code`、命令行和 `Streamlit` 运行
 
 ## 地图格式
@@ -69,6 +70,12 @@ python main.py --map data/maps/medium.csv --ants 60 --iterations 120 --alpha 1.0
 python main.py --no-plot --save-output --output-dir data/outputs/cli --map data/maps/medium.csv
 ```
 
+启用第三阶段算法增强示例：
+
+```bash
+python main.py --map data/maps/maze_small.csv --local-rho 0.05 --elite-weight 2.5
+```
+
 Streamlit 界面：
 
 ```bash
@@ -102,6 +109,13 @@ streamlit run scripts/run_streamlit.py
 python scripts/generate_maps.py --mode dense --rows 12 --cols 12 --density 0.25 --seed 42 --name generated_dense_demo
 ```
 
+## 结果统计
+汇总 `data/outputs/` 下所有实验结果：
+
+```bash
+python scripts/summarize_results.py --input-dir data/outputs --output-file data/outputs/summary.csv
+```
+
 ## 测试
 ```bash
 python -m unittest discover -s tests
@@ -109,6 +123,7 @@ python -m unittest discover -s tests
 
 ## 项目文档
 - [参考项目分析](./docs/00_REF_GA_PATH_PLANNING.md)
+- [实验记录模板](./docs/02_EXPERIMENT_LOG.md)
 - [项目技术计划与交接文档](./docs/01_ACO_PROJECT_PLAN.md)
 - [运行手册](./docs/03_RUNBOOK.md)
 

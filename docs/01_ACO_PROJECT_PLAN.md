@@ -103,6 +103,8 @@ ant-colony-path-planning/
 - 已显示最终路径、路径长度、最优轮次、路径坐标、运行耗时、收敛曲线。
 - 已支持显式保存运行结果到 `data/outputs/`。
 - 已提供分级手工地图集和地图生成脚本。
+- 已支持局部信息素更新与精英强化。
+- 已支持成功路径数量统计与结果汇总。
 - 已提供 PyCharm / VS Code 可直接运行的根入口。
 
 未完全完成或后续可加强：
@@ -324,8 +326,37 @@ deposit = Q / path_length
 - `path_length`
 - `best_iteration`
 - `history_best_length`
+- `history_success_count`
+- `total_successful_paths`
 - `runtime_seconds`
 - `message`
+
+### 6.8 第三阶段算法增强
+
+当前已实现两项增强：
+
+1. **局部信息素更新**
+   - 每只蚂蚁完成一次搜索后，对其走过的路径执行局部更新
+   - 更新形式为：
+
+```text
+tau = (1 - local_rho) * tau + local_rho * tau0
+```
+
+其中：
+
+- `local_rho` 为局部挥发率
+- `tau0` 为初始信息素
+
+2. **精英强化（Elite Reinforcement）**
+   - 每轮全局挥发和普通沉积结束后，如果当前已有全局最优路径，则对该路径追加一次精英沉积
+   - 强化量与 `elite_weight` 成正比
+
+作用：
+
+- 提高历史最优路径的稳定强化能力
+- 在复杂地图上改善收敛表现
+- 通过开关控制，方便做对照实验
 
 ---
 
@@ -391,8 +422,11 @@ deposit = Q / path_length
 - 成功路径收集
 - 信息素挥发
 - 信息素沉积
+- 局部信息素更新
+- 精英强化
 - 最优解维护
 - 运行耗时统计
+- 成功路径总数统计
 
 这是后续算法增强的主战场。
 
@@ -425,6 +459,7 @@ deposit = Q / path_length
 - 调用求解器
 - 打印结果
 - 打印运行耗时
+- 打印成功路径总数
 - 显式触发输出保存
 - 控制是否弹出图形窗口
 
@@ -436,8 +471,17 @@ deposit = Q / path_length
 - 参数输入
 - 结果展示
 - 显示运行耗时
+- 显示成功路径总数
 - 可选保存本次结果
 - 路径图和收敛曲线展示
+
+### 7.9 `scripts/summarize_results.py`
+
+负责对 `data/outputs/` 下的实验结果做汇总：
+
+- 扫描所有 `result.json`
+- 生成 `summary.csv`
+- 汇总关键指标，便于实验对比和报告整理
 
 ### 7.9 `scripts/`
 
@@ -483,6 +527,9 @@ deposit = Q / path_length
 - `evaporation_rate = 0.3`
 - `pheromone_deposit_q = 100.0`
 - `initial_pheromone = 1.0`
+- `local_evaporation_rate = 0.05`
+- `elite_enabled = true`
+- `elite_weight = 2.0`
 - `random_seed = 42`
 
 ### 8.2 参数优先级
@@ -582,6 +629,8 @@ streamlit run scripts/run_streamlit.py
 - `tests/test_params.py`
 - `tests/test_cli.py`
 - `tests/test_outputs.py`
+- `tests/test_generate_maps.py`
+- `tests/test_summarize_results.py`
 
 ### 10.2 已覆盖内容
 
@@ -619,13 +668,22 @@ streamlit run scripts/run_streamlit.py
 
 - 结果输出目录与产物文件生成
 
+`test_generate_maps.py`
+
+- 地图生成脚本输出合法矩形地图
+- 保证只生成一个起点和一个终点
+
+`test_summarize_results.py`
+
+- 汇总脚本能从 `result.json` 生成 `summary.csv`
+
 ### 10.3 当前测试不足
 
 还缺少：
 
 - 路径坐标合法性更细粒度检查
 - Streamlit 保存逻辑的更细粒度测试
-- 地图生成脚本的直接自动化测试
+- 第三阶段参数组合的更系统化实验测试
 
 这些都适合后续继续补。
 
@@ -649,6 +707,10 @@ streamlit run scripts/run_streamlit.py
 12. 完成地图生成脚本。
 13. 完成 CLI / Streamlit 结果导出能力。
 14. 完成运行耗时统计。
+15. 完成局部信息素更新。
+16. 完成精英强化。
+17. 完成结果汇总脚本。
+18. 完成实验记录模板。
 
 ---
 
@@ -664,11 +726,7 @@ streamlit run scripts/run_streamlit.py
   - 优点：实现简单。
   - 风险：对方向性表达不如边信息素细腻。
 
-- 当前没有局部信息素更新。
-  - 只做全局迭代后挥发和沉积。
-  - 可解释性够用，但不是更经典的增强版本。
-
-- 当前没有精英蚂蚁、没有全局最优额外强化、没有自适应参数。
+- 当前没有自适应参数。
 
 ### 12.2 工程层局限
 
@@ -691,9 +749,9 @@ streamlit run scripts/run_streamlit.py
 ### 第一优先级：巩固当前实现
 
 1. 增加路径坐标合法性的更细测试。
-2. 增加地图生成脚本的自动化测试。
+2. 增加 Streamlit 保存逻辑的更细测试。
 3. 补充 README 中的 PyCharm / VS Code 操作截图或说明。
-4. 把输出结果进一步整理成实验记录模板。
+4. 用 `summary.csv` 建立更正式的实验对比表。
 
 ### 第二优先级：增强课设展示效果
 
@@ -706,10 +764,10 @@ streamlit run scripts/run_streamlit.py
 ### 第三优先级：增强算法质量
 
 1. 增加边信息素版本作为对照实验。
-2. 增加局部信息素更新。
-3. 增加精英策略。
-4. 增加路径平滑处理。
-5. 比较不同参数下的收敛速度与路径长度。
+2. 增加路径平滑处理。
+3. 比较不同参数下的收敛速度与路径长度。
+4. 增加成功路径比例分析。
+5. 尝试自适应参数。
 
 ### 第四优先级：课设材料补完
 

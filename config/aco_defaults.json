@@ -6,5 +6,8 @@
   "evaporation_rate": 0.3,
   "pheromone_deposit_q": 100.0,
   "initial_pheromone": 1.0,
+  "local_evaporation_rate": 0.05,
+  "elite_enabled": true,
+  "elite_weight": 2.0,
   "random_seed": 42
 }

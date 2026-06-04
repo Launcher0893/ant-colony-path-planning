@@ -21,17 +21,27 @@ def solve_path(grid_map: GridMap, params: AcoParams) -> PlanningResult:
     best_length = math.inf
     best_iteration: int | None = None
     history_best_length: list[float] = []
+    history_success_count: list[int] = []
+    total_successful_paths = 0
 
     for iteration in range(1, params.iterations + 1):
         successful_paths: list[tuple[list[Coordinate], float]] = []
 
         for _ in range(params.ant_count):
-            candidate_path = _build_ant_path(grid_map, pheromone, params, rng)
-            if not candidate_path:
+            candidate_path, reached_goal = _build_ant_path(grid_map, pheromone, params, rng)
+            _apply_local_pheromone_update(
+                pheromone=pheromone,
+                path=candidate_path,
+                initial_pheromone=params.initial_pheromone,
+                local_evaporation_rate=params.local_evaporation_rate,
+            )
+
+            if not reached_goal:
                 continue
 
             candidate_length = path_length(candidate_path)
             successful_paths.append((candidate_path, candidate_length))
+            total_successful_paths += 1
 
             if candidate_length < best_length:
                 best_path = candidate_path
@@ -45,7 +55,15 @@ def solve_path(grid_map: GridMap, params: AcoParams) -> PlanningResult:
             for row, col in candidate_path:
                 pheromone[row, col] += deposit
 
+        if params.elite_enabled and best_path:
+            elite_deposit = (
+                params.elite_weight * params.pheromone_deposit_q / max(best_length, 1e-9)
+            )
+            for row, col in best_path:
+                pheromone[row, col] += elite_deposit
+
         history_best_length.append(best_length)
+        history_success_count.append(len(successful_paths))
 
     runtime_seconds = time.perf_counter() - started_at
 
@@ -56,6 +74,8 @@ def solve_path(grid_map: GridMap, params: AcoParams) -> PlanningResult:
             path_length=best_length,
             best_iteration=best_iteration,
             history_best_length=history_best_length,
+            history_success_count=history_success_count,
+            total_successful_paths=total_successful_paths,
             runtime_seconds=runtime_seconds,
             message="Path found successfully.",
         )
@@ -66,6 +86,8 @@ def solve_path(grid_map: GridMap, params: AcoParams) -> PlanningResult:
         path_length=math.inf,
         best_iteration=None,
         history_best_length=history_best_length,
+        history_success_count=history_success_count,
+        total_successful_paths=total_successful_paths,
         runtime_seconds=runtime_seconds,
         message="No feasible path found under the current map and parameters.",
     )
@@ -76,7 +98,7 @@ def _build_ant_path(
     pheromone: np.ndarray,
     params: AcoParams,
     rng: np.random.Generator,
-) -> list[Coordinate] | None:
+) -> tuple[list[Coordinate], bool]:
     current = grid_map.start
     goal = grid_map.goal
     visited = {current}
@@ -85,7 +107,7 @@ def _build_ant_path(
 
     for _ in range(max_steps):
         if current == goal:
-            return path
+            return path, True
 
         feasible_neighbors = [
             (coordinate, move_cost)
@@ -94,7 +116,7 @@ def _build_ant_path(
         ]
 
         if not feasible_neighbors:
-            return None
+            return path, False
 
         weights = _calculate_weights(
             feasible_neighbors=feasible_neighbors,
@@ -110,7 +132,24 @@ def _build_ant_path(
         visited.add(next_coordinate)
         current = next_coordinate
 
-    return path if current == goal else None
+    return path, current == goal
+
+
+def _apply_local_pheromone_update(
+    *,
+    pheromone: np.ndarray,
+    path: list[Coordinate],
+    initial_pheromone: float,
+    local_evaporation_rate: float,
+) -> None:
+    if local_evaporation_rate <= 0:
+        return
+
+    for row, col in path:
+        pheromone[row, col] = (
+            (1.0 - local_evaporation_rate) * pheromone[row, col]
+            + local_evaporation_rate * initial_pheromone
+        )
 
 
 def _calculate_weights(

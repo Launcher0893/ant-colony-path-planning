@@ -37,6 +37,9 @@ class AcoParams:
     evaporation_rate: float = 0.3
     pheromone_deposit_q: float = 100.0
     initial_pheromone: float = 1.0
+    local_evaporation_rate: float = 0.05
+    elite_enabled: bool = True
+    elite_weight: float = 2.0
     random_seed: int | None = 42
 
     def validate(self) -> None:
@@ -54,6 +57,10 @@ class AcoParams:
             raise ValueError("pheromone_deposit_q must be greater than 0.")
         if self.initial_pheromone <= 0:
             raise ValueError("initial_pheromone must be greater than 0.")
+        if not 0 <= self.local_evaporation_rate < 1:
+            raise ValueError("local_evaporation_rate must be in [0, 1).")
+        if self.elite_weight < 0:
+            raise ValueError("elite_weight must be non-negative.")
 
 
 @dataclass(frozen=True)
@@ -63,5 +70,7 @@ class PlanningResult:
     path_length: float
     best_iteration: int | None
     history_best_length: list[float]
+    history_success_count: list[int]
+    total_successful_paths: int
     runtime_seconds: float
     message: str

@@ -64,6 +64,20 @@ def main() -> None:
             value=float(defaults.initial_pheromone),
             step=0.1,
         )
+        local_evaporation_rate = st.number_input(
+            "局部 rho",
+            min_value=0.0,
+            max_value=0.99,
+            value=float(defaults.local_evaporation_rate),
+            step=0.01,
+        )
+        elite_enabled = st.checkbox("启用精英强化", value=bool(defaults.elite_enabled))
+        elite_weight = st.number_input(
+            "精英权重",
+            min_value=0.0,
+            value=float(defaults.elite_weight),
+            step=0.1,
+        )
         random_seed = st.number_input(
             "随机种子",
             min_value=0,
@@ -100,6 +114,9 @@ def main() -> None:
         evaporation_rate=float(evaporation_rate),
         pheromone_deposit_q=float(pheromone_deposit_q),
         initial_pheromone=float(initial_pheromone),
+        local_evaporation_rate=float(local_evaporation_rate),
+        elite_enabled=bool(elite_enabled),
+        elite_weight=float(elite_weight),
         random_seed=int(random_seed),
     )
     result = solve_path(grid_map, params)
@@ -115,6 +132,7 @@ def main() -> None:
         str(result.best_iteration) if result.best_iteration is not None else "-",
     )
     st.write(f"运行耗时: `{result.runtime_seconds:.4f}` 秒")
+    st.write(f"成功路径总数: `{result.total_successful_paths}`")
     st.write(result.message)
 
     if save_output:

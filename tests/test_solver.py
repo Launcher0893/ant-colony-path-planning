@@ -29,6 +29,9 @@ class SolverTests(unittest.TestCase):
         self.assertEqual(result.path[0], grid_map.start)
         self.assertEqual(result.path[-1], grid_map.goal)
         self.assertTrue(math.isfinite(result.path_length))
+        self.assertEqual(len(result.history_best_length), params.iterations)
+        self.assertEqual(len(result.history_success_count), params.iterations)
+        self.assertGreaterEqual(result.total_successful_paths, 1)
 
         for current, nxt in zip(result.path, result.path[1:]):
             neighbor_coords = {coordinate for coordinate, _ in get_neighbors(grid_map, current)}
@@ -55,6 +58,8 @@ class SolverTests(unittest.TestCase):
         self.assertEqual(result.path[-1], grid_map.goal)
         self.assertTrue(math.isfinite(result.path_length))
         self.assertGreater(result.runtime_seconds, 0.0)
+        self.assertEqual(len(result.history_success_count), params.iterations)
+        self.assertGreater(result.total_successful_paths, 0)
 
         for current, nxt in zip(result.path, result.path[1:]):
             neighbor_coords = {coordinate for coordinate, _ in get_neighbors(grid_map, current)}
@@ -69,6 +74,7 @@ class SolverTests(unittest.TestCase):
         self.assertFalse(result.found)
         self.assertEqual(result.path, [])
         self.assertTrue(math.isinf(result.path_length))
+        self.assertEqual(len(result.history_success_count), params.iterations)
 
 
 if __name__ == "__main__":

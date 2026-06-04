@@ -166,6 +166,9 @@ python -c "import numpy, matplotlib, streamlit; print('deps ok')"
 - `evaporation_rate = 0.3`
 - `pheromone_deposit_q = 100.0`
 - `initial_pheromone = 1.0`
+- `local_evaporation_rate = 0.05`
+- `elite_enabled = true`
+- `elite_weight = 2.0`
 - `random_seed = 42`
 
 输出目录约定：
@@ -245,6 +248,9 @@ python main.py --map data/maps/medium.csv --ants 60 --iterations 120 --alpha 1.0
 - `--rho`：信息素挥发率
 - `--q`：信息素沉积常数
 - `--initial-pheromone`：初始信息素强度
+- `--local-rho`：局部信息素挥发率
+- `--elite-weight`：精英强化权重
+- `--disable-elite`：关闭精英强化
 - `--seed`：随机种子
 - `--save-output`：显式保存本次运行结果
 - `--output-dir`：保存目录根路径
@@ -264,6 +270,15 @@ python main.py --no-plot --save-output --output-dir data/outputs/cli --map data/
 - `path_plot.png`
 - `convergence_plot.png`
 - `path.txt`
+
+额外统计字段会保存在 `result.json` 中，包括：
+
+- `runtime_seconds`
+- `total_successful_paths`
+- `history_success_count`
+- `local_evaporation_rate`
+- `elite_enabled`
+- `elite_weight`
 
 ### 7.8 CLI 正常输出示例
 
@@ -308,6 +323,9 @@ streamlit run scripts/run_streamlit.py
 - 设置 `rho`
 - 设置 `Q`
 - 设置初始信息素
+- 设置局部信息素挥发率
+- 设置精英强化开关
+- 设置精英强化权重
 - 设置随机种子
 - 设置是否保存本次结果
 - 展示地图预览
@@ -315,6 +333,7 @@ streamlit run scripts/run_streamlit.py
 - 展示收敛曲线
 - 展示路径坐标
 - 展示运行耗时
+- 展示成功路径总数
 
 ### 8.4 使用流程
 
@@ -346,6 +365,8 @@ python -m unittest discover -s tests
 - [test_params.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_params.py)
 - [test_cli.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_cli.py)
 - [test_outputs.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_outputs.py)
+- [test_generate_maps.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_generate_maps.py)
+- [test_summarize_results.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_summarize_results.py)
 
 覆盖内容包括：
 
@@ -357,6 +378,8 @@ python -m unittest discover -s tests
 - 参数校验
 - CLI 参数文件加载
 - 输出保存逻辑
+- 地图生成脚本
+- 结果汇总脚本
 
 ### 9.3 运行单个测试文件
 
@@ -581,12 +604,29 @@ python scripts/generate_maps.py --mode dense --rows 12 --cols 12 --density 0.25 
 
 ---
 
-## 15. 相关文档
+## 15. 结果汇总脚本
 
+当前提供结果汇总脚本：
+
+- [scripts/summarize_results.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/scripts/summarize_results.py)
+
+功能：
+
+- 扫描 `data/outputs/` 下所有 `result.json`
+- 生成 `summary.csv`
+- 汇总关键指标，便于后续做实验对比和报告整理
+
+示例：
+
+```bash
+python scripts/summarize_results.py --input-dir data/outputs --output-file data/outputs/summary.csv
+```
+
+---
+
+## 16. 相关文档
+
+- [实验记录模板](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/docs/02_EXPERIMENT_LOG.md)
 - [项目技术计划与交接文档](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/docs/01_ACO_PROJECT_PLAN.md)
 - [参考项目分析文档](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/docs/00_REF_GA_PATH_PLANNING.md)
-
-如果后续继续扩展，建议再补：
-
-- `docs/02_EXPERIMENT_LOG.md`
-- `docs/04_DEFENSE_NOTES.md`
+- [运行手册](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/docs/03_RUNBOOK.md)

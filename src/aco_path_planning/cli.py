@@ -30,6 +30,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rho", dest="evaporation_rate", type=float)
     parser.add_argument("--q", dest="pheromone_deposit_q", type=float)
     parser.add_argument("--initial-pheromone", type=float)
+    parser.add_argument("--local-rho", dest="local_evaporation_rate", type=float)
+    parser.add_argument("--elite-weight", type=float)
+    parser.add_argument(
+        "--disable-elite",
+        action="store_true",
+        help="Disable elite pheromone reinforcement.",
+    )
     parser.add_argument("--seed", dest="random_seed", type=int)
     parser.add_argument(
         "--save-output",
@@ -75,6 +82,7 @@ def main() -> int:
         print("Path coordinates: []")
 
     print(f"Runtime seconds: {result.runtime_seconds:.4f}")
+    print(f"Successful paths: {result.total_successful_paths}")
 
     if args.save_output:
         saved_dir = save_planning_artifacts(
@@ -97,16 +105,20 @@ def main() -> int:
 def build_params(args: argparse.Namespace) -> AcoParams:
     base_params = _load_params_from_file(args.param_file)
     overrides = {
-        "ant_count": args.ant_count,
-        "iterations": args.iterations,
-        "alpha": args.alpha,
-        "beta": args.beta,
-        "evaporation_rate": args.evaporation_rate,
-        "pheromone_deposit_q": args.pheromone_deposit_q,
-        "initial_pheromone": args.initial_pheromone,
-        "random_seed": args.random_seed,
+        "ant_count": getattr(args, "ant_count", None),
+        "iterations": getattr(args, "iterations", None),
+        "alpha": getattr(args, "alpha", None),
+        "beta": getattr(args, "beta", None),
+        "evaporation_rate": getattr(args, "evaporation_rate", None),
+        "pheromone_deposit_q": getattr(args, "pheromone_deposit_q", None),
+        "initial_pheromone": getattr(args, "initial_pheromone", None),
+        "local_evaporation_rate": getattr(args, "local_evaporation_rate", None),
+        "elite_weight": getattr(args, "elite_weight", None),
+        "random_seed": getattr(args, "random_seed", None),
     }
     merged = {**base_params, **{key: value for key, value in overrides.items() if value is not None}}
+    if getattr(args, "disable_elite", False):
+        merged["elite_enabled"] = False
     return AcoParams(**merged)
 
 

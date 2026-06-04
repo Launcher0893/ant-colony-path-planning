@@ -40,6 +40,9 @@ class OutputWriterTests(unittest.TestCase):
             self.assertEqual(payload["surface"], "cli")
             self.assertTrue(payload["found"])
             self.assertEqual(payload["map_name"], "easy.csv")
+            self.assertIn("total_successful_paths", payload)
+            self.assertIn("history_success_count", payload)
+            self.assertEqual(payload["params"]["elite_enabled"], self.params.elite_enabled)
 
 
 if __name__ == "__main__":

@@ -47,6 +47,7 @@ def save_planning_artifacts(
         "path": result.path,
         "message": result.message,
         "runtime_seconds": result.runtime_seconds,
+        "total_successful_paths": result.total_successful_paths,
         "params": {
             "ant_count": params.ant_count,
             "iterations": params.iterations,
@@ -55,9 +56,13 @@ def save_planning_artifacts(
             "evaporation_rate": params.evaporation_rate,
             "pheromone_deposit_q": params.pheromone_deposit_q,
             "initial_pheromone": params.initial_pheromone,
+            "local_evaporation_rate": params.local_evaporation_rate,
+            "elite_enabled": params.elite_enabled,
+            "elite_weight": params.elite_weight,
             "random_seed": params.random_seed,
         },
         "history_best_length": result.history_best_length,
+        "history_success_count": result.history_success_count,
     }
     (run_dir / "result.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2),
