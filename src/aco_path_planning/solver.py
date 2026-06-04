@@ -21,6 +21,8 @@ def solve_path(grid_map: GridMap, params: AcoParams) -> PlanningResult:
     best_length = math.inf
     best_iteration: int | None = None
     history_best_length: list[float] = []
+    history_iteration_best_length: list[float] = []
+    history_iteration_mean_length: list[float] = []
     history_success_count: list[int] = []
     total_successful_paths = 0
 
@@ -62,6 +64,14 @@ def solve_path(grid_map: GridMap, params: AcoParams) -> PlanningResult:
             for row, col in best_path:
                 pheromone[row, col] += elite_deposit
 
+        if successful_paths:
+            iteration_lengths = [candidate_length for _, candidate_length in successful_paths]
+            history_iteration_best_length.append(min(iteration_lengths))
+            history_iteration_mean_length.append(sum(iteration_lengths) / len(iteration_lengths))
+        else:
+            history_iteration_best_length.append(math.inf)
+            history_iteration_mean_length.append(math.inf)
+
         history_best_length.append(best_length)
         history_success_count.append(len(successful_paths))
 
@@ -74,6 +84,8 @@ def solve_path(grid_map: GridMap, params: AcoParams) -> PlanningResult:
             path_length=best_length,
             best_iteration=best_iteration,
             history_best_length=history_best_length,
+            history_iteration_best_length=history_iteration_best_length,
+            history_iteration_mean_length=history_iteration_mean_length,
             history_success_count=history_success_count,
             total_successful_paths=total_successful_paths,
             runtime_seconds=runtime_seconds,
@@ -86,6 +98,8 @@ def solve_path(grid_map: GridMap, params: AcoParams) -> PlanningResult:
         path_length=math.inf,
         best_iteration=None,
         history_best_length=history_best_length,
+        history_iteration_best_length=history_iteration_best_length,
+        history_iteration_mean_length=history_iteration_mean_length,
         history_success_count=history_success_count,
         total_successful_paths=total_successful_paths,
         runtime_seconds=runtime_seconds,

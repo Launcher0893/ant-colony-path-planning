@@ -107,6 +107,9 @@ ant-colony-path-planning/
 - 已支持成功路径数量统计与结果汇总。
 - 已将 Streamlit 参数区改为“英文符号 + 中文释义 + help 提示”。
 - 已重做现有地图起终点分布，避免样例数据偏置到左上起点。
+- 已开始为同类型地图提供多张变体。
+- 已支持历史最优、本轮最优/平均、成功路径数三类收敛指标。
+- 已在地图信息区显示地图类别与特点说明。
 - 已提供 PyCharm / VS Code 可直接运行的根入口。
 
 未完全完成或后续可加强：
@@ -328,6 +331,8 @@ deposit = Q / path_length
 - `path_length`
 - `best_iteration`
 - `history_best_length`
+- `history_iteration_best_length`
+- `history_iteration_mean_length`
 - `history_success_count`
 - `total_successful_paths`
 - `runtime_seconds`
@@ -440,7 +445,9 @@ tau = (1 - local_rho) * tau + local_rho * tau0
 - 障碍物显示
 - 起终点显示
 - 最优路径绘制
-- 收敛曲线绘制
+- 历史最优收敛曲线绘制
+- 本轮最优 / 本轮平均长度曲线绘制
+- 每轮成功路径数曲线绘制
 - 路径坐标格式化
 
 ### 7.6.1 `src/aco_path_planning/output_writer.py`
@@ -472,11 +479,22 @@ tau = (1 - local_rho) * tau + local_rho * tau0
 - 地图选择
 - 参数输入
 - 参数中文释义与提示说明
+- 地图类别与特点展示
 - 结果展示
 - 显示运行耗时
 - 显示成功路径总数
 - 可选保存本次结果
-- 路径图和收敛曲线展示
+- 路径图和多类收敛图展示
+
+### 7.8.1 `src/aco_path_planning/map_catalog.py`
+
+负责地图元数据：
+
+- 地图展示名
+- 地图类别
+- 地图特点描述
+- 预期可解性
+- 起点与终点校验信息
 
 ### 7.9 `scripts/summarize_results.py`
 
@@ -633,7 +651,9 @@ streamlit run scripts/run_streamlit.py
 - `tests/test_cli.py`
 - `tests/test_outputs.py`
 - `tests/test_generate_maps.py`
+- `tests/test_map_catalog.py`
 - `tests/test_summarize_results.py`
+- `tests/test_visualization.py`
 
 ### 10.2 已覆盖内容
 
@@ -670,6 +690,7 @@ streamlit run scripts/run_streamlit.py
 `test_outputs.py`
 
 - 结果输出目录与产物文件生成
+- 收敛相关历史曲线字段输出
 
 `test_generate_maps.py`
 
@@ -679,6 +700,15 @@ streamlit run scripts/run_streamlit.py
 `test_summarize_results.py`
 
 - 汇总脚本能从 `result.json` 生成 `summary.csv`
+
+`test_map_catalog.py`
+
+- 地图目录内容与元数据一致
+- 每张地图的起点终点和可解性符合预期
+
+`test_visualization.py`
+
+- 多种收敛图函数都能正常生成 figure
 
 ### 10.3 当前测试不足
 
@@ -714,6 +744,9 @@ streamlit run scripts/run_streamlit.py
 16. 完成精英强化。
 17. 完成结果汇总脚本。
 18. 完成实验记录模板。
+19. 完成多收敛指标记录与展示。
+20. 完成同类地图变体扩展。
+21. 完成地图元数据与特点说明展示。
 
 ---
 
@@ -756,6 +789,7 @@ streamlit run scripts/run_streamlit.py
 3. 补充 README 中的 PyCharm / VS Code 操作截图或说明。
 4. 用 `summary.csv` 建立更正式的实验对比表。
 5. 对重新分布起终点后的地图集补充截图留档。
+6. 对多曲线收敛图做一组截图和解释说明。
 
 ### 第二优先级：增强课设展示效果
 

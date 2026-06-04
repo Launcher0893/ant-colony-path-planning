@@ -5,15 +5,24 @@ from pathlib import Path
 import streamlit as st
 
 from .config import DEFAULT_MAP_DIR, DEFAULT_PARAM_FILE, DEFAULT_STREAMLIT_OUTPUT_DIR
+from .map_catalog import get_map_metadata, get_sorted_map_files
 from .map_loader import discover_map_files, load_grid_map
 from .models import AcoParams
 from .output_writer import save_planning_artifacts
 from .solver import solve_path
-from .visualization import format_path_coordinates, plot_convergence, plot_grid_map
+from .visualization import (
+    format_path_coordinates,
+    plot_convergence,
+    plot_grid_map,
+    plot_length_comparison,
+    plot_success_count,
+)
 
 
 def main() -> None:
     map_files = discover_map_files(DEFAULT_MAP_DIR)
+    sorted_file_names = get_sorted_map_files([path.name for path in map_files])
+    path_by_name = {path.name: path for path in map_files}
     defaults = _load_defaults()
 
     st.set_page_config(page_title="ACO Path Planning", layout="wide")
@@ -28,7 +37,8 @@ def main() -> None:
         st.header("参数设置")
         selected_map_name = st.selectbox(
             "选择地图",
-            options=[path.name for path in map_files],
+            options=sorted_file_names,
+            format_func=lambda file_name: get_map_metadata(file_name).display_name,
             index=0,
         )
         ant_count = st.number_input(
@@ -113,8 +123,9 @@ def main() -> None:
         )
         run_clicked = st.button("开始规划", type="primary")
 
-    selected_map_path = next(path for path in map_files if path.name == selected_map_name)
+    selected_map_path = path_by_name[selected_map_name]
     grid_map = load_grid_map(selected_map_path)
+    metadata = get_map_metadata(selected_map_name)
 
     info_col, preview_col = st.columns([1.2, 0.8])
     with info_col:
@@ -123,6 +134,8 @@ def main() -> None:
         st.write(f"尺寸: `{grid_map.rows} x {grid_map.cols}`")
         st.write(f"起点: `{grid_map.start}`")
         st.write(f"终点: `{grid_map.goal}`")
+        st.write(f"类别: `{metadata.category}`")
+        st.write(f"特点: {metadata.description}")
         st.write(f"默认参数文件: `{DEFAULT_PARAM_FILE.name}`")
     with preview_col:
         st.subheader("地图预览")
@@ -178,13 +191,26 @@ def main() -> None:
         )
         st.success(f"结果已保存到: `{saved_dir}`")
 
-    chart_col, curve_col = st.columns(2)
-    with chart_col:
+    row1_col1, row1_col2 = st.columns(2)
+    with row1_col1:
         st.subheader("最终路径")
         st.pyplot(plot_grid_map(grid_map, result))
-    with curve_col:
-        st.subheader("收敛曲线")
+    with row1_col2:
+        st.subheader("历史最优路径长度")
         st.pyplot(plot_convergence(result.history_best_length))
+
+    row2_col1, row2_col2 = st.columns(2)
+    with row2_col1:
+        st.subheader("本轮最优 / 本轮平均路径长度")
+        st.pyplot(
+            plot_length_comparison(
+                result.history_iteration_best_length,
+                result.history_iteration_mean_length,
+            )
+        )
+    with row2_col2:
+        st.subheader("每轮成功路径数")
+        st.pyplot(plot_success_count(result.history_success_count))
 
     st.subheader("路径坐标")
     st.code(format_path_coordinates(result.path), language="text")

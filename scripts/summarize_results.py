@@ -47,6 +47,14 @@ def collect_results(input_dir: Path) -> list[dict[str, object]]:
                 "best_iteration": payload.get("best_iteration"),
                 "runtime_seconds": payload.get("runtime_seconds"),
                 "total_successful_paths": payload.get("total_successful_paths"),
+                "avg_success_count": _mean(payload.get("history_success_count", [])),
+                "best_length_curve_final": _last_finite(payload.get("history_best_length", [])),
+                "iteration_best_curve_final": _last_finite(
+                    payload.get("history_iteration_best_length", [])
+                ),
+                "iteration_mean_curve_final": _last_finite(
+                    payload.get("history_iteration_mean_length", [])
+                ),
                 "alpha": params.get("alpha"),
                 "beta": params.get("beta"),
                 "evaporation_rate": params.get("evaporation_rate"),
@@ -69,6 +77,10 @@ def write_summary(path: Path, rows: list[dict[str, object]]) -> None:
         "best_iteration",
         "runtime_seconds",
         "total_successful_paths",
+        "avg_success_count",
+        "best_length_curve_final",
+        "iteration_best_curve_final",
+        "iteration_mean_curve_final",
         "alpha",
         "beta",
         "evaporation_rate",
@@ -82,6 +94,19 @@ def write_summary(path: Path, rows: list[dict[str, object]]) -> None:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
+
+
+def _mean(values: list[float | int]) -> float:
+    if not values:
+        return 0.0
+    return float(sum(values) / len(values))
+
+
+def _last_finite(values: list[float | int]) -> float | None:
+    for value in reversed(values):
+        if value != float("inf"):
+            return float(value)
+    return None
 
 
 if __name__ == "__main__":

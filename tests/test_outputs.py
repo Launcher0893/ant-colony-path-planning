@@ -33,6 +33,8 @@ class OutputWriterTests(unittest.TestCase):
 
             self.assertTrue((saved_dir / "path_plot.png").exists())
             self.assertTrue((saved_dir / "convergence_plot.png").exists())
+            self.assertTrue((saved_dir / "iteration_length_plot.png").exists())
+            self.assertTrue((saved_dir / "success_count_plot.png").exists())
             self.assertTrue((saved_dir / "path.txt").exists())
             self.assertTrue((saved_dir / "result.json").exists())
 
@@ -42,6 +44,8 @@ class OutputWriterTests(unittest.TestCase):
             self.assertEqual(payload["map_name"], "easy.csv")
             self.assertIn("total_successful_paths", payload)
             self.assertIn("history_success_count", payload)
+            self.assertIn("history_iteration_best_length", payload)
+            self.assertIn("history_iteration_mean_length", payload)
             self.assertEqual(payload["params"]["elite_enabled"], self.params.elite_enabled)
 
 

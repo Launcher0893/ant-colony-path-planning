@@ -65,6 +65,45 @@ def plot_convergence(history_best_length: list[float]):
     return figure
 
 
+def plot_length_comparison(
+    history_iteration_best_length: list[float],
+    history_iteration_mean_length: list[float],
+):
+    figure, axis = plt.subplots(figsize=(7, 4))
+
+    best_values = [value if math.isfinite(value) else np.nan for value in history_iteration_best_length]
+    mean_values = [value if math.isfinite(value) else np.nan for value in history_iteration_mean_length]
+    x_axis = range(1, len(best_values) + 1)
+    axis.plot(x_axis, best_values, color="#1f77b4", linewidth=2, label="Iteration Best Length")
+    axis.plot(x_axis, mean_values, color="#2ca02c", linewidth=2, label="Iteration Mean Length")
+    axis.set_title("Iteration Path Lengths")
+    axis.set_xlabel("Iteration")
+    axis.set_ylabel("Path Length")
+    axis.grid(alpha=0.3)
+    axis.legend(loc="upper right")
+
+    figure.tight_layout()
+    return figure
+
+
+def plot_success_count(history_success_count: list[int]):
+    figure, axis = plt.subplots(figsize=(7, 4))
+
+    axis.plot(
+        range(1, len(history_success_count) + 1),
+        history_success_count,
+        color="#d62728",
+        linewidth=2,
+    )
+    axis.set_title("Successful Paths by Iteration")
+    axis.set_xlabel("Iteration")
+    axis.set_ylabel("Successful Path Count")
+    axis.grid(alpha=0.3)
+
+    figure.tight_layout()
+    return figure
+
+
 def format_path_coordinates(path: list[Coordinate]) -> str:
     if not path:
         return "[]"

@@ -39,6 +39,8 @@ class SummarizeResultsTests(unittest.TestCase):
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows[0]["map_name"], "easy.csv")
             self.assertEqual(rows[0]["surface"], "cli")
+            self.assertIn("total_successful_paths", rows[0])
+            self.assertIn("avg_success_count", rows[0])
 
             summary_path = Path(temp_dir) / "summary.csv"
             summarize_results.write_summary(summary_path, rows)
@@ -49,6 +51,7 @@ class SummarizeResultsTests(unittest.TestCase):
 
         self.assertEqual(len(csv_rows), 1)
         self.assertEqual(csv_rows[0]["map_name"], "easy.csv")
+        self.assertIn("avg_success_count", csv_rows[0])
 
 
 if __name__ == "__main__":

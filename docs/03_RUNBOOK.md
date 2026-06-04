@@ -120,14 +120,23 @@ python -c "import numpy, matplotlib, streamlit; print('deps ok')"
 当前示例地图：
 
 - [easy.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/easy.csv)
+- [easy_alt.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/easy_alt.csv)
 - [medium.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/medium.csv)
+- [medium_alt.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/medium_alt.csv)
 - [blocked.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/blocked.csv)
+- [blocked_alt.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/blocked_alt.csv)
 - [hard_corridor.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/hard_corridor.csv)
+- [hard_corridor_alt.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/hard_corridor_alt.csv)
 - [maze_small.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/maze_small.csv)
+- [maze_small_alt.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/maze_small_alt.csv)
 - [dense_obstacles.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/dense_obstacles.csv)
+- [dense_obstacles_alt.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/dense_obstacles_alt.csv)
 - [large_sparse.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/large_sparse.csv)
+- [large_sparse_alt.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/large_sparse_alt.csv)
 - [large_dense.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/large_dense.csv)
+- [large_dense_alt.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/large_dense_alt.csv)
 - [no_solution_large.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/no_solution_large.csv)
+- [no_solution_large_alt.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/no_solution_large_alt.csv)
 
 地图格式是 `CSV` 数字栅格：
 
@@ -348,6 +357,8 @@ streamlit run scripts/run_streamlit.py
 
 - 右侧 `Map Preview` 已采用更紧凑的显示尺寸，避免预览图过度占用版面
 - 地图集中的起点和终点位置已做分布拉开，不再集中在左上和右下
+- 当前地图信息区会显示地图类别和简要特点说明
+- 收敛分析已区分为历史最优、本轮最优/本轮平均、每轮成功路径数三类图
 
 ---
 
@@ -372,7 +383,9 @@ python -m unittest discover -s tests
 - [test_cli.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_cli.py)
 - [test_outputs.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_outputs.py)
 - [test_generate_maps.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_generate_maps.py)
+- [test_map_catalog.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_map_catalog.py)
 - [test_summarize_results.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_summarize_results.py)
+- [test_visualization.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_visualization.py)
 
 覆盖内容包括：
 
@@ -385,7 +398,9 @@ python -m unittest discover -s tests
 - CLI 参数文件加载
 - 输出保存逻辑
 - 地图生成脚本
+- 地图目录与元数据一致性
 - 结果汇总脚本
+- 收敛图绘制函数
 
 ### 9.3 运行单个测试文件
 

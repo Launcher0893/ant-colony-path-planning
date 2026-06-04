@@ -7,7 +7,13 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 from .models import AcoParams, GridMap, PlanningResult
-from .visualization import format_path_coordinates, plot_convergence, plot_grid_map
+from .visualization import (
+    format_path_coordinates,
+    plot_convergence,
+    plot_grid_map,
+    plot_length_comparison,
+    plot_success_count,
+)
 
 
 def save_planning_artifacts(
@@ -30,6 +36,17 @@ def save_planning_artifacts(
     convergence_figure = plot_convergence(result.history_best_length)
     convergence_figure.savefig(run_dir / "convergence_plot.png", bbox_inches="tight")
     plt.close(convergence_figure)
+
+    comparison_figure = plot_length_comparison(
+        result.history_iteration_best_length,
+        result.history_iteration_mean_length,
+    )
+    comparison_figure.savefig(run_dir / "iteration_length_plot.png", bbox_inches="tight")
+    plt.close(comparison_figure)
+
+    success_count_figure = plot_success_count(result.history_success_count)
+    success_count_figure.savefig(run_dir / "success_count_plot.png", bbox_inches="tight")
+    plt.close(success_count_figure)
 
     (run_dir / "path.txt").write_text(
         format_path_coordinates(result.path),
@@ -62,6 +79,8 @@ def save_planning_artifacts(
             "random_seed": params.random_seed,
         },
         "history_best_length": result.history_best_length,
+        "history_iteration_best_length": result.history_iteration_best_length,
+        "history_iteration_mean_length": result.history_iteration_mean_length,
         "history_success_count": result.history_success_count,
     }
     (run_dir / "result.json").write_text(

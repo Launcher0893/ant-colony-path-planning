@@ -30,6 +30,8 @@ class SolverTests(unittest.TestCase):
         self.assertEqual(result.path[-1], grid_map.goal)
         self.assertTrue(math.isfinite(result.path_length))
         self.assertEqual(len(result.history_best_length), params.iterations)
+        self.assertEqual(len(result.history_iteration_best_length), params.iterations)
+        self.assertEqual(len(result.history_iteration_mean_length), params.iterations)
         self.assertEqual(len(result.history_success_count), params.iterations)
         self.assertGreaterEqual(result.total_successful_paths, 1)
 
@@ -58,6 +60,8 @@ class SolverTests(unittest.TestCase):
         self.assertEqual(result.path[-1], grid_map.goal)
         self.assertTrue(math.isfinite(result.path_length))
         self.assertGreater(result.runtime_seconds, 0.0)
+        self.assertEqual(len(result.history_iteration_best_length), params.iterations)
+        self.assertEqual(len(result.history_iteration_mean_length), params.iterations)
         self.assertEqual(len(result.history_success_count), params.iterations)
         self.assertGreater(result.total_successful_paths, 0)
 
@@ -74,6 +78,8 @@ class SolverTests(unittest.TestCase):
         self.assertFalse(result.found)
         self.assertEqual(result.path, [])
         self.assertTrue(math.isinf(result.path_length))
+        self.assertEqual(len(result.history_iteration_best_length), params.iterations)
+        self.assertEqual(len(result.history_iteration_mean_length), params.iterations)
         self.assertEqual(len(result.history_success_count), params.iterations)
 
 

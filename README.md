@@ -19,9 +19,11 @@
 - 支持配置蚂蚁数量、迭代次数、`alpha`、`beta`、全局/局部 `rho`、`Q`、初始信息素和精英强化
 - Streamlit 侧边栏支持参数中文释义
 - 支持显式保存路径图、收敛曲线、路径坐标和结构化结果
+- 支持历史最优、本轮最优/平均、成功路径数三类收敛分析
 - 提供手工地图集和地图生成脚本
+- 每种地图类型都开始提供多张变体地图
 - 提供结果汇总脚本和实验记录模板
-- 显示最终路径、路径长度、路径坐标、运行耗时、成功路径数和收敛曲线
+- 显示最终路径、路径长度、路径坐标、运行耗时、成功路径数和多条收敛曲线
 - 同时支持 `PyCharm`、`VS Code`、命令行和 `Streamlit` 运行
 
 ## 地图格式
@@ -94,15 +96,25 @@ streamlit run scripts/run_streamlit.py
 
 ## 示例地图
 - 现有地图集已覆盖不同起点和终点分布，不再默认固定为左上起点和右下终点
+- 每一类地图都开始提供多张变体，便于做同类对照实验
 - `data/maps/easy.csv`：基础可达地图
+- `data/maps/easy_alt.csv`：基础可达地图变体
 - `data/maps/medium.csv`：中等复杂度绕障地图
+- `data/maps/medium_alt.csv`：中等复杂度绕障地图变体
 - `data/maps/blocked.csv`：无解地图
+- `data/maps/blocked_alt.csv`：无解地图变体
 - `data/maps/hard_corridor.csv`：狭窄通道地图
+- `data/maps/hard_corridor_alt.csv`：狭窄通道地图变体
 - `data/maps/maze_small.csv`：小型迷宫地图
+- `data/maps/maze_small_alt.csv`：小型迷宫地图变体
 - `data/maps/dense_obstacles.csv`：高障碍密度地图
+- `data/maps/dense_obstacles_alt.csv`：高障碍密度地图变体
 - `data/maps/large_sparse.csv`：大尺寸稀疏障碍地图
+- `data/maps/large_sparse_alt.csv`：大尺寸稀疏障碍地图变体
 - `data/maps/large_dense.csv`：大尺寸密集障碍地图
+- `data/maps/large_dense_alt.csv`：大尺寸密集障碍地图变体
 - `data/maps/no_solution_large.csv`：大尺寸无解地图
+- `data/maps/no_solution_large_alt.csv`：大尺寸无解地图变体
 
 ## 地图生成
 生成额外实验地图：

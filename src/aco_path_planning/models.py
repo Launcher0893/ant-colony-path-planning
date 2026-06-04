@@ -70,6 +70,8 @@ class PlanningResult:
     path_length: float
     best_iteration: int | None
     history_best_length: list[float]
+    history_iteration_best_length: list[float]
+    history_iteration_mean_length: list[float]
     history_success_count: list[int]
     total_successful_paths: int
     runtime_seconds: float
