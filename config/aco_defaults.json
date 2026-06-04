@@ -1,0 +1,10 @@
+{
+  "ant_count": 50,
+  "iterations": 100,
+  "alpha": 1.0,
+  "beta": 4.0,
+  "evaporation_rate": 0.3,
+  "pheromone_deposit_q": 100.0,
+  "initial_pheromone": 1.0,
+  "random_seed": 42
+}
