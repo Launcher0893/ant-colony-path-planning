@@ -38,8 +38,11 @@ def collect_results(input_dir: Path) -> list[dict[str, object]]:
     for result_file in sorted(input_dir.rglob("result.json")):
         payload = json.loads(result_file.read_text(encoding="utf-8"))
         params = payload.get("params", {})
+        label_file = result_file.parent / "experiment_label.txt"
+        experiment_label = label_file.read_text(encoding="utf-8").strip() if label_file.exists() else ""
         rows.append(
             {
+                "experiment_label": experiment_label,
                 "surface": payload.get("surface"),
                 "map_name": payload.get("map_name"),
                 "found": payload.get("found"),
@@ -70,6 +73,7 @@ def collect_results(input_dir: Path) -> list[dict[str, object]]:
 
 def write_summary(path: Path, rows: list[dict[str, object]]) -> None:
     fieldnames = [
+        "experiment_label",
         "surface",
         "map_name",
         "found",

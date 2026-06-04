@@ -60,6 +60,40 @@ class MapCatalogTests(unittest.TestCase):
                 else:
                     self.assertTrue(math.isinf(result.path_length))
 
+    def test_analysis_maps_have_non_flat_history_best_length(self) -> None:
+        params = AcoParams(
+            ant_count=12,
+            iterations=100,
+            alpha=1.0,
+            beta=2.0,
+            evaporation_rate=0.3,
+            local_evaporation_rate=0.05,
+            elite_enabled=False,
+            elite_weight=0.0,
+            random_seed=42,
+        )
+        analysis_maps = [
+            "easy_alt.csv",
+            "medium_alt.csv",
+            "large_sparse.csv",
+            "large_dense_alt.csv",
+        ]
+
+        for file_name in analysis_maps:
+            with self.subTest(file_name=file_name):
+                grid_map = load_grid_map(PROJECT_ROOT / "data" / "maps" / file_name)
+                result = solve_path(grid_map, params)
+                finite = [value for value in result.history_best_length if math.isfinite(value)]
+                unique_values = []
+                for value in finite:
+                    if not unique_values or unique_values[-1] != value:
+                        unique_values.append(value)
+
+                self.assertTrue(result.found)
+                self.assertGreaterEqual(len(unique_values), 2)
+                self.assertIsNotNone(result.best_iteration)
+                self.assertGreater(result.best_iteration, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

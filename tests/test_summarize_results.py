@@ -34,11 +34,14 @@ class SummarizeResultsTests(unittest.TestCase):
                 surface="cli",
                 output_root=output_root,
             )
+            result_dir = next(output_root.iterdir())
+            (result_dir / "experiment_label.txt").write_text("baseline", encoding="utf-8")
 
             rows = summarize_results.collect_results(output_root)
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows[0]["map_name"], "easy.csv")
             self.assertEqual(rows[0]["surface"], "cli")
+            self.assertEqual(rows[0]["experiment_label"], "baseline")
             self.assertIn("total_successful_paths", rows[0])
             self.assertIn("avg_success_count", rows[0])
 

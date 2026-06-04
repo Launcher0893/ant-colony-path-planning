@@ -11,6 +11,7 @@ class MapMetadata:
     expected_solvable: bool
     start: tuple[int, int]
     goal: tuple[int, int]
+    analysis_ready: bool = False
 
 
 MAP_CATALOG: dict[str, MapMetadata] = {
@@ -29,6 +30,7 @@ MAP_CATALOG: dict[str, MapMetadata] = {
         expected_solvable=True,
         start=(5, 5),
         goal=(0, 0),
+        analysis_ready=True,
     ),
     "medium.csv": MapMetadata(
         display_name="medium / 中等绕障图 A",
@@ -45,6 +47,7 @@ MAP_CATALOG: dict[str, MapMetadata] = {
         expected_solvable=True,
         start=(0, 1),
         goal=(9, 8),
+        analysis_ready=True,
     ),
     "blocked.csv": MapMetadata(
         display_name="blocked / 无解图 A",
@@ -117,6 +120,7 @@ MAP_CATALOG: dict[str, MapMetadata] = {
         expected_solvable=True,
         start=(13, 1),
         goal=(1, 13),
+        analysis_ready=True,
     ),
     "large_sparse_alt.csv": MapMetadata(
         display_name="large_sparse / 大图稀疏障碍 B",
@@ -141,6 +145,7 @@ MAP_CATALOG: dict[str, MapMetadata] = {
         expected_solvable=True,
         start=(13, 12),
         goal=(1, 2),
+        analysis_ready=True,
     ),
     "no_solution_large.csv": MapMetadata(
         display_name="no_solution_large / 大图无解 A",
