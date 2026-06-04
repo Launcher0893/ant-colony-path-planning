@@ -43,54 +43,80 @@ def main() -> None:
             value=int(defaults.iterations),
             step=1,
         )
-        alpha = st.number_input("alpha", min_value=0.0, value=float(defaults.alpha), step=0.1)
-        beta = st.number_input("beta", min_value=0.0, value=float(defaults.beta), step=0.1)
+        alpha = st.number_input(
+            "alpha（信息素重要程度）",
+            min_value=0.0,
+            value=float(defaults.alpha),
+            step=0.1,
+            help="越大越偏向跟随高信息素路径。",
+        )
+        beta = st.number_input(
+            "beta（启发函数重要程度）",
+            min_value=0.0,
+            value=float(defaults.beta),
+            step=0.1,
+            help="越大越偏向选择更接近目标的方向。",
+        )
         evaporation_rate = st.number_input(
-            "rho",
+            "rho（全局信息素挥发率）",
             min_value=0.0,
             max_value=0.99,
             value=float(defaults.evaporation_rate),
             step=0.05,
+            help="每轮结束后全局信息素衰减比例。",
         )
         pheromone_deposit_q = st.number_input(
-            "Q",
+            "Q（信息素沉积常数）",
             min_value=1.0,
             value=float(defaults.pheromone_deposit_q),
             step=1.0,
+            help="成功路径每轮沉积信息素的基准强度。",
         )
         initial_pheromone = st.number_input(
-            "初始信息素",
+            "初始信息素 tau0",
             min_value=0.1,
             value=float(defaults.initial_pheromone),
             step=0.1,
+            help="所有可通行节点的初始信息素水平。",
         )
         local_evaporation_rate = st.number_input(
-            "局部 rho",
+            "局部 rho（局部信息素挥发率）",
             min_value=0.0,
             max_value=0.99,
             value=float(defaults.local_evaporation_rate),
             step=0.01,
+            help="单只蚂蚁走过路径后执行局部更新的强度。",
         )
-        elite_enabled = st.checkbox("启用精英强化", value=bool(defaults.elite_enabled))
+        elite_enabled = st.checkbox(
+            "启用精英强化",
+            value=bool(defaults.elite_enabled),
+            help="是否对当前全局最优路径进行额外信息素强化。",
+        )
         elite_weight = st.number_input(
-            "精英权重",
+            "精英权重（最优路径额外强化倍数）",
             min_value=0.0,
             value=float(defaults.elite_weight),
             step=0.1,
+            help="精英路径相对普通成功路径的额外强化倍数。",
         )
         random_seed = st.number_input(
             "随机种子",
             min_value=0,
             value=int(defaults.random_seed if defaults.random_seed is not None else 42),
             step=1,
+            help="固定随机过程，方便复现实验。",
         )
-        save_output = st.checkbox("保存本次结果", value=False)
+        save_output = st.checkbox(
+            "保存本次结果",
+            value=False,
+            help="将图片、路径和 JSON 结果写入 data/outputs/。",
+        )
         run_clicked = st.button("开始规划", type="primary")
 
     selected_map_path = next(path for path in map_files if path.name == selected_map_name)
     grid_map = load_grid_map(selected_map_path)
 
-    info_col, preview_col = st.columns([1, 2])
+    info_col, preview_col = st.columns([1.2, 0.8])
     with info_col:
         st.subheader("地图信息")
         st.write(f"文件: `{selected_map_path.relative_to(Path.cwd()) if selected_map_path.is_relative_to(Path.cwd()) else selected_map_path.name}`")
@@ -100,7 +126,14 @@ def main() -> None:
         st.write(f"默认参数文件: `{DEFAULT_PARAM_FILE.name}`")
     with preview_col:
         st.subheader("地图预览")
-        st.pyplot(plot_grid_map(grid_map, title="Map Preview"))
+        st.pyplot(
+            plot_grid_map(
+                grid_map,
+                title="Map Preview",
+                figure_size=(4.5, 4.5),
+                compact=True,
+            )
+        )
 
     if not run_clicked:
         st.info("调整参数后点击“开始规划”执行路径搜索。")

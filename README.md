@@ -17,6 +17,7 @@
 - 读取 `CSV` 栅格地图
 - 支持 `8` 邻域路径规划，禁止对角穿角
 - 支持配置蚂蚁数量、迭代次数、`alpha`、`beta`、全局/局部 `rho`、`Q`、初始信息素和精英强化
+- Streamlit 侧边栏支持参数中文释义
 - 支持显式保存路径图、收敛曲线、路径坐标和结构化结果
 - 提供手工地图集和地图生成脚本
 - 提供结果汇总脚本和实验记录模板
@@ -92,6 +93,7 @@ streamlit run scripts/run_streamlit.py
 默认参数文件在 `config/aco_defaults.json`，CLI 启动时会先读取该文件，再应用命令行参数覆盖。
 
 ## 示例地图
+- 现有地图集已覆盖不同起点和终点分布，不再默认固定为左上起点和右下终点
 - `data/maps/easy.csv`：基础可达地图
 - `data/maps/medium.csv`：中等复杂度绕障地图
 - `data/maps/blocked.csv`：无解地图

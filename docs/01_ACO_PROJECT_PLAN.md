@@ -105,6 +105,8 @@ ant-colony-path-planning/
 - 已提供分级手工地图集和地图生成脚本。
 - 已支持局部信息素更新与精英强化。
 - 已支持成功路径数量统计与结果汇总。
+- 已将 Streamlit 参数区改为“英文符号 + 中文释义 + help 提示”。
+- 已重做现有地图起终点分布，避免样例数据偏置到左上起点。
 - 已提供 PyCharm / VS Code 可直接运行的根入口。
 
 未完全完成或后续可加强：
@@ -469,6 +471,7 @@ tau = (1 - local_rho) * tau + local_rho * tau0
 
 - 地图选择
 - 参数输入
+- 参数中文释义与提示说明
 - 结果展示
 - 显示运行耗时
 - 显示成功路径总数
@@ -752,6 +755,7 @@ streamlit run scripts/run_streamlit.py
 2. 增加 Streamlit 保存逻辑的更细测试。
 3. 补充 README 中的 PyCharm / VS Code 操作截图或说明。
 4. 用 `summary.csv` 建立更正式的实验对比表。
+5. 对重新分布起终点后的地图集补充截图留档。
 
 ### 第二优先级：增强课设展示效果
 

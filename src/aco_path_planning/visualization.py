@@ -13,8 +13,10 @@ def plot_grid_map(
     grid_map: GridMap,
     result: PlanningResult | None = None,
     title: str = "ACO Path Planning Result",
+    figure_size: tuple[float, float] = (7.0, 7.0),
+    compact: bool = False,
 ):
-    figure, axis = plt.subplots(figsize=(7, 7))
+    figure, axis = plt.subplots(figsize=figure_size)
 
     display_grid = np.zeros_like(grid_map.grid, dtype=float)
     display_grid[grid_map.grid == 1] = 1.0
@@ -23,8 +25,12 @@ def plot_grid_map(
     axis.imshow(display_grid, cmap=color_map, origin="upper")
 
     axis.set_title(title)
-    axis.set_xlabel("Column")
-    axis.set_ylabel("Row")
+    if compact:
+        axis.set_xlabel("")
+        axis.set_ylabel("")
+    else:
+        axis.set_xlabel("Column")
+        axis.set_ylabel("Row")
     axis.set_xticks(np.arange(-0.5, grid_map.cols, 1), minor=True)
     axis.set_yticks(np.arange(-0.5, grid_map.rows, 1), minor=True)
     axis.grid(which="minor", color="#d6d6d6", linestyle="-", linewidth=0.8)
@@ -40,7 +46,7 @@ def plot_grid_map(
         y_coords = [coordinate[0] for coordinate in result.path]
         axis.plot(x_coords, y_coords, color="#2ca02c", linewidth=2.5, label="Best Path")
 
-    axis.legend(loc="upper right")
+    axis.legend(loc="upper right", fontsize="small" if compact else None)
     figure.tight_layout()
     return figure
 
