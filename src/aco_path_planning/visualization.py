@@ -41,6 +41,7 @@ def plot_grid_map(
         axis.plot(x_coords, y_coords, color="#2ca02c", linewidth=2.5, label="Best Path")
 
     axis.legend(loc="upper right")
+    figure.tight_layout()
     return figure
 
 
@@ -54,6 +55,7 @@ def plot_convergence(history_best_length: list[float]):
     axis.set_ylabel("Best Path Length")
     axis.grid(alpha=0.3)
 
+    figure.tight_layout()
     return figure
 
 

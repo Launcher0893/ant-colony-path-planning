@@ -219,3 +219,9 @@ __marimo__/
 
 # VsCode settings
 ant-colony-path-planning.code-workspace
+
+# Generated experiment artifacts
+data/outputs/*
+!data/outputs/.gitkeep
+data/maps/generated/*
+!data/maps/generated/.gitkeep

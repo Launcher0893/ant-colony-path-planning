@@ -4,9 +4,10 @@ from pathlib import Path
 
 import streamlit as st
 
-from .config import DEFAULT_MAP_DIR, DEFAULT_PARAM_FILE
+from .config import DEFAULT_MAP_DIR, DEFAULT_PARAM_FILE, DEFAULT_STREAMLIT_OUTPUT_DIR
 from .map_loader import discover_map_files, load_grid_map
 from .models import AcoParams
+from .output_writer import save_planning_artifacts
 from .solver import solve_path
 from .visualization import format_path_coordinates, plot_convergence, plot_grid_map
 
@@ -69,6 +70,7 @@ def main() -> None:
             value=int(defaults.random_seed if defaults.random_seed is not None else 42),
             step=1,
         )
+        save_output = st.checkbox("保存本次结果", value=False)
         run_clicked = st.button("开始规划", type="primary")
 
     selected_map_path = next(path for path in map_files if path.name == selected_map_name)
@@ -112,7 +114,18 @@ def main() -> None:
         "最优轮次",
         str(result.best_iteration) if result.best_iteration is not None else "-",
     )
+    st.write(f"运行耗时: `{result.runtime_seconds:.4f}` 秒")
     st.write(result.message)
+
+    if save_output:
+        saved_dir = save_planning_artifacts(
+            grid_map=grid_map,
+            params=params,
+            result=result,
+            surface="streamlit",
+            output_root=DEFAULT_STREAMLIT_OUTPUT_DIR,
+        )
+        st.success(f"结果已保存到: `{saved_dir}`")
 
     chart_col, curve_col = st.columns(2)
     with chart_col:

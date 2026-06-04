@@ -20,17 +20,21 @@ ant-colony-path-planning/
 ├── config/                  # 参数配置、默认值、后续可扩展的环境配置
 │   └── aco_defaults.json
 ├── data/                    # 地图、样例数据、后续实验输出数据
-│   └── maps/
-│       ├── easy.csv
-│       ├── medium.csv
-│       └── blocked.csv
+│   ├── maps/
+│   │   ├── easy.csv
+│   │   ├── medium.csv
+│   │   └── blocked.csv
+│   └── outputs/
+│       ├── cli/
+│       └── streamlit/
 ├── docs/                    # 技术文档、参考分析、开发计划、实验记录
-│   ├── 00REF_GA_PATH_PLANNING.md
+│   ├── 00_REF_GA_PATH_PLANNING.md
 │   └── 01_ACO_PROJECT_PLAN.md
 ├── references/              # 老师给的参考项目，保留原样，不作为主实现目录
 ├── scripts/                 # 可直接运行的脚本入口
 │   ├── run_cli.py
-│   └── run_streamlit.py
+│   ├── run_streamlit.py
+│   └── generate_maps.py
 ├── src/                     # 主源码目录
 │   └── aco_path_planning/
 │       ├── __init__.py
@@ -96,7 +100,9 @@ ant-colony-path-planning/
 - 已实现基于蚁群算法的 8 邻域路径搜索。
 - 已支持 CLI 运行和 Streamlit 界面运行。
 - 已支持地图选择、蚂蚁数量、迭代次数、`alpha / beta / rho / Q / 初始信息素 / 随机种子` 参数设置。
-- 已显示最终路径、路径长度、最优轮次、路径坐标、收敛曲线。
+- 已显示最终路径、路径长度、最优轮次、路径坐标、运行耗时、收敛曲线。
+- 已支持显式保存运行结果到 `data/outputs/`。
+- 已提供分级手工地图集和地图生成脚本。
 - 已提供 PyCharm / VS Code 可直接运行的根入口。
 
 未完全完成或后续可加强：
@@ -318,6 +324,7 @@ deposit = Q / path_length
 - `path_length`
 - `best_iteration`
 - `history_best_length`
+- `runtime_seconds`
 - `message`
 
 ---
@@ -340,7 +347,11 @@ deposit = Q / path_length
 
 - `PROJECT_ROOT`
 - `DEFAULT_MAP_DIR`
+- `DEFAULT_GENERATED_MAP_DIR`
 - `DEFAULT_PARAM_FILE`
+- `DEFAULT_OUTPUT_ROOT`
+- `DEFAULT_CLI_OUTPUT_DIR`
+- `DEFAULT_STREAMLIT_OUTPUT_DIR`
 
 作用：
 
@@ -381,6 +392,7 @@ deposit = Q / path_length
 - 信息素挥发
 - 信息素沉积
 - 最优解维护
+- 运行耗时统计
 
 这是后续算法增强的主战场。
 
@@ -395,6 +407,15 @@ deposit = Q / path_length
 - 收敛曲线绘制
 - 路径坐标格式化
 
+### 7.6.1 `src/aco_path_planning/output_writer.py`
+
+负责实验输出持久化：
+
+- 保存路径图
+- 保存收敛曲线图
+- 保存路径文本
+- 保存结构化 `result.json`
+
 ### 7.7 `src/aco_path_planning/cli.py`
 
 负责命令行模式：
@@ -403,6 +424,8 @@ deposit = Q / path_length
 - 合并命令行覆盖参数
 - 调用求解器
 - 打印结果
+- 打印运行耗时
+- 显式触发输出保存
 - 控制是否弹出图形窗口
 
 ### 7.8 `src/aco_path_planning/webapp.py`
@@ -412,6 +435,8 @@ deposit = Q / path_length
 - 地图选择
 - 参数输入
 - 结果展示
+- 显示运行耗时
+- 可选保存本次结果
 - 路径图和收敛曲线展示
 
 ### 7.9 `scripts/`
@@ -425,6 +450,7 @@ deposit = Q / path_length
 
 - `scripts/run_cli.py`
 - `scripts/run_streamlit.py`
+- `scripts/generate_maps.py`
 
 ### 7.10 根入口兼容层
 
@@ -507,6 +533,12 @@ python scripts/run_cli.py
 python main.py --map data/maps/medium.csv --ants 60 --iterations 120 --alpha 1.0 --beta 4.0 --rho 0.3 --q 100
 ```
 
+保存输出示例：
+
+```bash
+python main.py --no-plot --save-output --output-dir data/outputs/cli --map data/maps/medium.csv
+```
+
 ### 9.2 Streamlit 运行
 
 推荐：
@@ -547,6 +579,9 @@ streamlit run scripts/run_streamlit.py
 - `tests/test_map_loader.py`
 - `tests/test_grid.py`
 - `tests/test_solver.py`
+- `tests/test_params.py`
+- `tests/test_cli.py`
+- `tests/test_outputs.py`
 
 ### 10.2 已覆盖内容
 
@@ -555,6 +590,10 @@ streamlit run scripts/run_streamlit.py
 - 正常地图读取
 - 多起点报错
 - 非矩形地图报错
+- 非法值报错
+- 缺起点报错
+- 缺终点报错
+- 多终点报错
 
 `test_grid.py`
 
@@ -565,18 +604,28 @@ streamlit run scripts/run_streamlit.py
 
 - `easy.csv` 上能找到路径
 - `blocked.csv` 上能正确返回无解
+- `medium.csv` 上能稳定找到路径
+- `no_solution_large.csv` 上能正确返回无解
+
+`test_params.py`
+
+- 参数非法值校验
+
+`test_cli.py`
+
+- JSON 参数文件读取与命令行覆盖
+
+`test_outputs.py`
+
+- 结果输出目录与产物文件生成
 
 ### 10.3 当前测试不足
 
 还缺少：
 
-- 非法单元格值测试
-- 无起点 / 无终点测试
-- 多终点测试
-- 参数非法值测试
-- `medium.csv` 稳定性测试
 - 路径坐标合法性更细粒度检查
-- CLI 参数文件加载测试
+- Streamlit 保存逻辑的更细粒度测试
+- 地图生成脚本的直接自动化测试
 
 这些都适合后续继续补。
 
@@ -596,6 +645,10 @@ streamlit run scripts/run_streamlit.py
 8. 完成默认参数文件。
 9. 完成样例地图文件。
 10. 完成基础单元测试与无解场景验证。
+11. 完成分级手工地图集。
+12. 完成地图生成脚本。
+13. 完成 CLI / Streamlit 结果导出能力。
+14. 完成运行耗时统计。
 
 ---
 
@@ -619,8 +672,6 @@ streamlit run scripts/run_streamlit.py
 
 ### 12.2 工程层局限
 
-- Streamlit 界面未实现结果导出。
-- 未保存运行截图或路径图片到 `data/outputs/`。
 - 未做日志系统。
 - 未做批量实验脚本。
 - 未做更正式的配置 schema 校验。
@@ -639,10 +690,10 @@ streamlit run scripts/run_streamlit.py
 
 ### 第一优先级：巩固当前实现
 
-1. 增加更多地图格式校验测试。
-2. 增加 `medium.csv` 的求解稳定性测试。
+1. 增加路径坐标合法性的更细测试。
+2. 增加地图生成脚本的自动化测试。
 3. 补充 README 中的 PyCharm / VS Code 操作截图或说明。
-4. 在 `data/` 下建立输出目录，支持保存路径图和收敛曲线图。
+4. 把输出结果进一步整理成实验记录模板。
 
 ### 第二优先级：增强课设展示效果
 

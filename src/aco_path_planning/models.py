@@ -63,4 +63,5 @@ class PlanningResult:
     path_length: float
     best_iteration: int | None
     history_best_length: list[float]
+    runtime_seconds: float
     message: str

@@ -7,9 +7,10 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from .config import DEFAULT_MAP_DIR, DEFAULT_PARAM_FILE
+from .config import DEFAULT_CLI_OUTPUT_DIR, DEFAULT_MAP_DIR, DEFAULT_PARAM_FILE
 from .map_loader import load_grid_map
 from .models import AcoParams
+from .output_writer import save_planning_artifacts
 from .solver import solve_path
 from .visualization import format_path_coordinates, plot_convergence, plot_grid_map
 
@@ -30,6 +31,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--q", dest="pheromone_deposit_q", type=float)
     parser.add_argument("--initial-pheromone", type=float)
     parser.add_argument("--seed", dest="random_seed", type=int)
+    parser.add_argument(
+        "--save-output",
+        action="store_true",
+        help="Save path plot, convergence plot, path text, and result metadata to data/outputs.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=str(DEFAULT_CLI_OUTPUT_DIR),
+        help="Root directory used when --save-output is enabled.",
+    )
     parser.add_argument(
         "--no-plot",
         action="store_true",
@@ -62,6 +73,18 @@ def main() -> int:
     else:
         print("Path length: inf")
         print("Path coordinates: []")
+
+    print(f"Runtime seconds: {result.runtime_seconds:.4f}")
+
+    if args.save_output:
+        saved_dir = save_planning_artifacts(
+            grid_map=grid_map,
+            params=params,
+            result=result,
+            surface="cli",
+            output_root=args.output_dir,
+        )
+        print(f"Saved output: {saved_dir}")
 
     if not args.no_plot:
         plot_grid_map(grid_map, result)

@@ -4,10 +4,12 @@
 
 ## 目录结构
 - `config/`：默认参数配置
-- `data/maps/`：示例栅格地图
+- `data/maps/`：示例与分级栅格地图
+- `data/maps/generated/`：脚本生成的实验地图
+- `data/outputs/`：CLI 与 Streamlit 运行结果输出
 - `docs/`：参考分析和项目计划文档
 - `references/`：老师提供的参考项目
-- `scripts/`：CLI 与 Streamlit 运行脚本
+- `scripts/`：CLI、Streamlit 与地图生成脚本
 - `src/`：主源码目录
 - `tests/`：自动化测试
 
@@ -15,7 +17,9 @@
 - 读取 `CSV` 栅格地图
 - 支持 `8` 邻域路径规划，禁止对角穿角
 - 支持配置蚂蚁数量、迭代次数、`alpha`、`beta`、`rho`、`Q` 和初始信息素
-- 显示最终路径、路径长度、路径坐标和收敛曲线
+- 支持显式保存路径图、收敛曲线、路径坐标和结构化结果
+- 提供手工地图集和地图生成脚本
+- 显示最终路径、路径长度、路径坐标、运行耗时和收敛曲线
 - 同时支持 `PyCharm`、`VS Code`、命令行和 `Streamlit` 运行
 
 ## 地图格式
@@ -59,6 +63,12 @@ python scripts/run_cli.py
 python main.py --map data/maps/medium.csv --ants 60 --iterations 120 --alpha 1.0 --beta 4.0 --rho 0.3 --q 100
 ```
 
+保存输出示例：
+
+```bash
+python main.py --no-plot --save-output --output-dir data/outputs/cli --map data/maps/medium.csv
+```
+
 Streamlit 界面：
 
 ```bash
@@ -78,6 +88,19 @@ streamlit run scripts/run_streamlit.py
 - `data/maps/easy.csv`：基础可达地图
 - `data/maps/medium.csv`：中等复杂度绕障地图
 - `data/maps/blocked.csv`：无解地图
+- `data/maps/hard_corridor.csv`：狭窄通道地图
+- `data/maps/maze_small.csv`：小型迷宫地图
+- `data/maps/dense_obstacles.csv`：高障碍密度地图
+- `data/maps/large_sparse.csv`：大尺寸稀疏障碍地图
+- `data/maps/large_dense.csv`：大尺寸密集障碍地图
+- `data/maps/no_solution_large.csv`：大尺寸无解地图
+
+## 地图生成
+生成额外实验地图：
+
+```bash
+python scripts/generate_maps.py --mode dense --rows 12 --cols 12 --density 0.25 --seed 42 --name generated_dense_demo
+```
 
 ## 测试
 ```bash
@@ -85,7 +108,7 @@ python -m unittest discover -s tests
 ```
 
 ## 项目文档
-- [参考项目分析](./docs/00REF_GA_PATH_PLANNING.md)
+- [参考项目分析](./docs/00_REF_GA_PATH_PLANNING.md)
 - [项目技术计划与交接文档](./docs/01_ACO_PROJECT_PLAN.md)
 - [运行手册](./docs/03_RUNBOOK.md)
 

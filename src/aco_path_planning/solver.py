@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import time
 
 import numpy as np
 
@@ -10,6 +11,7 @@ from .models import AcoParams, Coordinate, GridMap, PlanningResult
 
 def solve_path(grid_map: GridMap, params: AcoParams) -> PlanningResult:
     params.validate()
+    started_at = time.perf_counter()
 
     rng = np.random.default_rng(params.random_seed)
     pheromone = np.zeros((grid_map.rows, grid_map.cols), dtype=float)
@@ -45,6 +47,8 @@ def solve_path(grid_map: GridMap, params: AcoParams) -> PlanningResult:
 
         history_best_length.append(best_length)
 
+    runtime_seconds = time.perf_counter() - started_at
+
     if best_path:
         return PlanningResult(
             found=True,
@@ -52,6 +56,7 @@ def solve_path(grid_map: GridMap, params: AcoParams) -> PlanningResult:
             path_length=best_length,
             best_iteration=best_iteration,
             history_best_length=history_best_length,
+            runtime_seconds=runtime_seconds,
             message="Path found successfully.",
         )
 
@@ -61,6 +66,7 @@ def solve_path(grid_map: GridMap, params: AcoParams) -> PlanningResult:
         path_length=math.inf,
         best_iteration=None,
         history_best_length=history_best_length,
+        runtime_seconds=runtime_seconds,
         message="No feasible path found under the current map and parameters.",
     )
 

@@ -45,6 +45,42 @@ class MapLoaderTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "rectangular"):
                 load_grid_map(map_path)
 
+    def test_load_grid_map_rejects_invalid_cell_value(self) -> None:
+        content = "2,0,4\n0,0,3\n"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            map_path = Path(temp_dir) / "sample.csv"
+            map_path.write_text(content, encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "Unsupported cell value"):
+                load_grid_map(map_path)
+
+    def test_load_grid_map_rejects_missing_start(self) -> None:
+        content = "0,0,1\n0,0,3\n"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            map_path = Path(temp_dir) / "sample.csv"
+            map_path.write_text(content, encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "exactly one start"):
+                load_grid_map(map_path)
+
+    def test_load_grid_map_rejects_missing_goal(self) -> None:
+        content = "2,0,1\n0,0,0\n"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            map_path = Path(temp_dir) / "sample.csv"
+            map_path.write_text(content, encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "exactly one goal"):
+                load_grid_map(map_path)
+
+    def test_load_grid_map_rejects_multiple_goals(self) -> None:
+        content = "2,0,3\n0,0,3\n"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            map_path = Path(temp_dir) / "sample.csv"
+            map_path.write_text(content, encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "exactly one goal"):
+                load_grid_map(map_path)
+
 
 if __name__ == "__main__":
     unittest.main()

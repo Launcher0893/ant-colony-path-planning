@@ -25,13 +25,15 @@ ant-colony-path-planning/
 ├── config/
 │   └── aco_defaults.json      # 默认 ACO 参数配置
 ├── data/
-│   └── maps/                  # 示例地图文件
+│   ├── maps/                  # 示例与分级地图
+│   └── outputs/               # 运行结果输出目录
 ├── docs/
 │   ├── 01_ACO_PROJECT_PLAN.md # 技术交接文档
 │   └── 03_RUNBOOK.md          # 当前运行手册
 ├── scripts/
 │   ├── run_cli.py             # CLI 启动脚本
-│   └── run_streamlit.py       # Streamlit 启动脚本
+│   ├── run_streamlit.py       # Streamlit 启动脚本
+│   └── generate_maps.py       # 地图生成脚本
 ├── src/
 │   └── aco_path_planning/     # 主业务代码
 ├── tests/                     # 自动化测试
@@ -120,6 +122,12 @@ python -c "import numpy, matplotlib, streamlit; print('deps ok')"
 - [easy.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/easy.csv)
 - [medium.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/medium.csv)
 - [blocked.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/blocked.csv)
+- [hard_corridor.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/hard_corridor.csv)
+- [maze_small.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/maze_small.csv)
+- [dense_obstacles.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/dense_obstacles.csv)
+- [large_sparse.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/large_sparse.csv)
+- [large_dense.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/large_dense.csv)
+- [no_solution_large.csv](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/data/maps/no_solution_large.csv)
 
 地图格式是 `CSV` 数字栅格：
 
@@ -159,6 +167,11 @@ python -c "import numpy, matplotlib, streamlit; print('deps ok')"
 - `pheromone_deposit_q = 100.0`
 - `initial_pheromone = 1.0`
 - `random_seed = 42`
+
+输出目录约定：
+
+- CLI 默认输出到 `data/outputs/cli/`
+- Streamlit 默认输出到 `data/outputs/streamlit/`
 
 CLI 启动时参数优先级为：
 
@@ -233,9 +246,26 @@ python main.py --map data/maps/medium.csv --ants 60 --iterations 120 --alpha 1.0
 - `--q`：信息素沉积常数
 - `--initial-pheromone`：初始信息素强度
 - `--seed`：随机种子
+- `--save-output`：显式保存本次运行结果
+- `--output-dir`：保存目录根路径
 - `--no-plot`：禁用绘图窗口
 
-### 7.7 CLI 正常输出示例
+### 7.7 保存输出
+
+如果需要把本次运行结果保存到 `data/outputs/`，使用：
+
+```bash
+python main.py --no-plot --save-output --output-dir data/outputs/cli --map data/maps/medium.csv
+```
+
+一次保存会生成一个独立目录，目录下包含：
+
+- `result.json`
+- `path_plot.png`
+- `convergence_plot.png`
+- `path.txt`
+
+### 7.8 CLI 正常输出示例
 
 正常运行后，控制台通常会输出：
 
@@ -279,10 +309,12 @@ streamlit run scripts/run_streamlit.py
 - 设置 `Q`
 - 设置初始信息素
 - 设置随机种子
+- 设置是否保存本次结果
 - 展示地图预览
 - 展示最终路径图
 - 展示收敛曲线
 - 展示路径坐标
+- 展示运行耗时
 
 ### 8.4 使用流程
 
@@ -311,6 +343,9 @@ python -m unittest discover -s tests
 - [test_map_loader.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_map_loader.py)
 - [test_grid.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_grid.py)
 - [test_solver.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_solver.py)
+- [test_params.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_params.py)
+- [test_cli.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_cli.py)
+- [test_outputs.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_outputs.py)
 
 覆盖内容包括：
 
@@ -319,6 +354,9 @@ python -m unittest discover -s tests
 - 8 邻域与防穿角
 - 可解地图求解
 - 无解地图处理
+- 参数校验
+- CLI 参数文件加载
+- 输出保存逻辑
 
 ### 9.3 运行单个测试文件
 
@@ -493,6 +531,17 @@ python -m unittest discover -s tests
 
 不要直接从 `src/` 内部切目录后再执行测试。
 
+### 12.6 当前解释器缺少依赖
+
+如果你使用的是 `conda` 环境 `aco_path`，建议统一通过这个环境运行：
+
+```bash
+conda run -n aco_path python -m unittest discover -s tests
+conda run -n aco_path python main.py --no-plot
+```
+
+如果直接 `python` 找不到 `numpy`，通常是当前终端没有切到正确解释器。
+
 ---
 
 ## 13. 推荐日常操作流程
@@ -504,13 +553,38 @@ python -m unittest discover -s tests
 3. 执行 `python main.py --no-plot`
 4. 需要界面时执行 `streamlit run streamlit_app.py`
 5. 修改代码后重复测试
+6. 需要留档时使用 `--save-output`
 
 ---
 
-## 14. 相关文档
+## 14. 地图生成脚本
+
+当前提供地图生成脚本：
+
+- [scripts/generate_maps.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/scripts/generate_maps.py)
+
+支持模式：
+
+- `maze`
+- `dense`
+- `large_sparse`
+
+示例：
+
+```bash
+python scripts/generate_maps.py --mode dense --rows 12 --cols 12 --density 0.25 --seed 42 --name generated_dense_demo
+```
+
+生成结果默认放在：
+
+- `data/maps/generated/`
+
+---
+
+## 15. 相关文档
 
 - [项目技术计划与交接文档](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/docs/01_ACO_PROJECT_PLAN.md)
-- [参考项目分析文档](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/docs/00REF_GA_PATH_PLANNING.md)
+- [参考项目分析文档](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/docs/00_REF_GA_PATH_PLANNING.md)
 
 如果后续继续扩展，建议再补：
 

@@ -44,6 +44,32 @@ class SolverTests(unittest.TestCase):
         self.assertEqual(result.path, [])
         self.assertTrue(math.isinf(result.path_length))
 
+    def test_solver_finds_path_on_medium_map(self) -> None:
+        grid_map = load_grid_map(self.project_root / "data" / "maps" / "medium.csv")
+        params = AcoParams(ant_count=50, iterations=100, random_seed=42)
+
+        result = solve_path(grid_map, params)
+
+        self.assertTrue(result.found)
+        self.assertEqual(result.path[0], grid_map.start)
+        self.assertEqual(result.path[-1], grid_map.goal)
+        self.assertTrue(math.isfinite(result.path_length))
+        self.assertGreater(result.runtime_seconds, 0.0)
+
+        for current, nxt in zip(result.path, result.path[1:]):
+            neighbor_coords = {coordinate for coordinate, _ in get_neighbors(grid_map, current)}
+            self.assertIn(nxt, neighbor_coords)
+
+    def test_solver_reports_failure_on_large_no_solution_map(self) -> None:
+        grid_map = load_grid_map(self.project_root / "data" / "maps" / "no_solution_large.csv")
+        params = AcoParams(ant_count=30, iterations=30, random_seed=42)
+
+        result = solve_path(grid_map, params)
+
+        self.assertFalse(result.found)
+        self.assertEqual(result.path, [])
+        self.assertTrue(math.isinf(result.path_length))
+
 
 if __name__ == "__main__":
     unittest.main()
