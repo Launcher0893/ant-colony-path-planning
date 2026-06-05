@@ -11,7 +11,9 @@ from .custom_map import (
     BRUSH_OBSTACLE,
     BRUSH_START,
     apply_brush,
+    apply_brush_to_cells,
     build_grid_map_from_array,
+    cells_from_stroke_image,
     count_markers,
     create_empty_grid,
     is_ready_to_save,
@@ -40,11 +42,69 @@ try:
 except ImportError:  # pragma: no cover - depends on optional dependency
     _HAS_IMAGE_COORDS = False
 
+
+def _patch_image_to_url() -> bool:
+    """Make ``image_to_url`` callable the way streamlit-drawable-canvas 0.9.3 expects.
+
+    Streamlit 1.50 changed ``image_to_url`` in two ways that break the
+    (unmaintained) canvas component:
+
+    1. It moved from ``streamlit.elements.image`` to
+       ``streamlit.elements.lib.image_utils``.
+    2. Its second parameter changed from ``width: int`` to
+       ``layout_config: LayoutConfig``.
+
+    The component still imports it from the old location and calls it with an
+    int width. We install a small shim onto the old module location that adapts
+    the int-width call to the new ``LayoutConfig`` signature, then forwards to
+    the real function. Returns True when a usable ``image_to_url`` is in place.
+    """
+    try:
+        import streamlit.elements.image as st_image_module
+    except ImportError:  # pragma: no cover - defensive
+        return False
+
+    try:
+        from streamlit.elements.lib.image_utils import image_to_url as new_image_to_url
+        from streamlit.elements.lib.layout_utils import LayoutConfig
+    except ImportError:  # pragma: no cover - older streamlit layout
+        # Older Streamlit keeps the old-signature function at the old location;
+        # if it is there the component works natively, so nothing to patch.
+        return hasattr(st_image_module, "image_to_url")
+
+    def image_to_url_compat(image, width, clamp, channels, output_format, image_id):
+        # The canvas component passes an int width; the new function wants a
+        # LayoutConfig. Wrap ints, pass anything else through untouched.
+        layout_config = LayoutConfig(width=width) if isinstance(width, int) else width
+        return new_image_to_url(image, layout_config, clamp, channels, output_format, image_id)
+
+    st_image_module.image_to_url = image_to_url_compat
+    return True
+
+
+try:
+    if _patch_image_to_url():
+        from streamlit_drawable_canvas import st_canvas
+
+        _HAS_DRAWABLE_CANVAS = True
+    else:  # pragma: no cover - depends on streamlit internals
+        _HAS_DRAWABLE_CANVAS = False
+except Exception:  # pragma: no cover - depends on optional dependency
+    _HAS_DRAWABLE_CANVAS = False
+
 _BRUSH_BY_LABEL = {
     "障碍": BRUSH_OBSTACLE,
     "起点": BRUSH_START,
     "终点": BRUSH_GOAL,
     "擦除": BRUSH_ERASE,
+}
+# Stroke colors only affect the temporary drag overlay; the grid itself is
+# recolored by the brush after rasterization, so these are just for visibility.
+_BRUSH_STROKE_COLORS = {
+    BRUSH_OBSTACLE: "#30343f",
+    BRUSH_START: "#1f77b4",
+    BRUSH_GOAL: "#d62728",
+    BRUSH_ERASE: "#f59e0b",
 }
 _EDITOR_MAX_CANVAS_PX = 560
 
@@ -244,12 +304,85 @@ def _run_example_mode(
     _render_results(grid_map, params, result, save_output)
 
 
+def _render_drag_canvas(
+    grid,
+    grid_rows: int,
+    grid_cols: int,
+    cell_px: int,
+    brush: str,
+) -> None:
+    """Drag-to-paint canvas: strokes are rasterized to cells on mouse release.
+
+    The painted grid is drawn as the canvas background; the user's freedraw
+    strokes sit on top and are returned by the component only as the stroke
+    layer (no background), which we rasterize into touched cells.
+    """
+    st.caption(
+        "按住鼠标拖动绘制：蓝色=起点，红色=终点，深色=障碍，橙色=擦除。"
+        "起点与终点全图唯一，松开鼠标后生效。"
+    )
+
+    background = render_editor_canvas(grid, cell_px=cell_px)
+    canvas_version = st.session_state.get("editor_canvas_version", 0)
+    # A fresh key per applied stroke clears the overlay so the next stroke starts
+    # from a blank layer and is not re-counted on the following rerun.
+    canvas_key = f"editor_drawable_{grid_rows}x{grid_cols}_{cell_px}_{canvas_version}"
+
+    result = st_canvas(
+        fill_color="rgba(0, 0, 0, 0)",
+        stroke_width=max(2, cell_px // 2),
+        stroke_color=_BRUSH_STROKE_COLORS.get(brush, "#30343f"),
+        background_image=background,
+        update_streamlit=True,
+        height=grid_rows * cell_px,
+        width=grid_cols * cell_px,
+        drawing_mode="freedraw",
+        key=canvas_key,
+    )
+
+    if result is None or result.image_data is None:
+        return
+
+    touched = cells_from_stroke_image(result.image_data, cell_px, grid_rows, grid_cols)
+    if not touched:
+        return
+
+    apply_brush_to_cells(grid, touched, brush)
+    st.session_state["editor_grid"] = grid
+    st.session_state["editor_canvas_version"] = canvas_version + 1
+    st.rerun()
+
+
+def _render_click_canvas(
+    grid,
+    grid_rows: int,
+    grid_cols: int,
+    cell_px: int,
+    brush: str,
+) -> None:
+    """Fallback single-click canvas used when the drag component is unavailable."""
+    st.caption("点击格子绘制：蓝色=起点，红色=终点，深色=障碍，浅色=空地。起点与终点全图唯一。")
+
+    canvas_image = render_editor_canvas(grid, cell_px=cell_px)
+    coords = streamlit_image_coordinates(canvas_image, key="editor_canvas")
+
+    if coords is not None:
+        click = (coords["x"], coords["y"])
+        if st.session_state.get("editor_last_click") != click:
+            st.session_state["editor_last_click"] = click
+            cell = cell_from_click(coords["x"], coords["y"], cell_px, grid_rows, grid_cols)
+            if cell is not None:
+                apply_brush(grid, cell[0], cell[1], brush)
+                st.session_state["editor_grid"] = grid
+                st.rerun()
+
+
 def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) -> None:
     st.subheader("自定义地图编辑器")
-    if not _HAS_IMAGE_COORDS:
+    if not (_HAS_DRAWABLE_CANVAS or _HAS_IMAGE_COORDS):
         st.error(
-            "缺少 streamlit-image-coordinates 组件，请运行 "
-            "`pip install streamlit-image-coordinates` 后重新启动。"
+            "缺少绘图组件，请运行 "
+            "`pip install streamlit-drawable-canvas streamlit-image-coordinates` 后重新启动。"
         )
         return
 
@@ -266,6 +399,7 @@ def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) ->
     if create_clicked or "editor_grid" not in st.session_state:
         st.session_state["editor_grid"] = create_empty_grid(int(rows), int(cols))
         st.session_state["editor_last_click"] = None
+        st.session_state["editor_canvas_version"] = st.session_state.get("editor_canvas_version", 0) + 1
 
     grid = st.session_state["editor_grid"]
     grid_rows, grid_cols = int(grid.shape[0]), int(grid.shape[1])
@@ -283,21 +417,12 @@ def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) ->
         st.session_state["editor_prev_brush"] = brush_label
         st.session_state["editor_last_click"] = None
 
-    st.caption("点击格子绘制：蓝色=起点，红色=终点，深色=障碍，浅色=空地。起点与终点全图唯一。")
-
     cell_px = max(10, min(30, _EDITOR_MAX_CANVAS_PX // max(grid_rows, grid_cols)))
-    canvas_image = render_editor_canvas(grid, cell_px=cell_px)
-    coords = streamlit_image_coordinates(canvas_image, key="editor_canvas")
 
-    if coords is not None:
-        click = (coords["x"], coords["y"])
-        if st.session_state.get("editor_last_click") != click:
-            st.session_state["editor_last_click"] = click
-            cell = cell_from_click(coords["x"], coords["y"], cell_px, grid_rows, grid_cols)
-            if cell is not None:
-                apply_brush(grid, cell[0], cell[1], brush)
-                st.session_state["editor_grid"] = grid
-                st.rerun()
+    if _HAS_DRAWABLE_CANVAS:
+        _render_drag_canvas(grid, grid_rows, grid_cols, cell_px, brush)
+    else:
+        _render_click_canvas(grid, grid_rows, grid_cols, cell_px, brush)
 
     start_count, goal_count = count_markers(grid)
     ready = is_ready_to_save(grid)

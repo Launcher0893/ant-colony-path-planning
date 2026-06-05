@@ -23,7 +23,10 @@ from aco_path_planning.custom_map import (
     OBSTACLE,
     START,
     apply_brush,
+    apply_brush_to_cells,
     build_grid_map_from_array,
+    cells_from_stroke_alpha,
+    cells_from_stroke_image,
     count_markers,
     create_empty_grid,
     generate_custom_map_name,
@@ -167,6 +170,67 @@ class BuildAndSaveTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             saved_path = save_custom_map(grid, "no_ext", temp_dir)
             self.assertEqual(saved_path.suffix, ".csv")
+
+
+class StrokeRasterizationTests(unittest.TestCase):
+    def _alpha_for_cells(
+        self,
+        cells: list[tuple[int, int]],
+        cell_px: int,
+        rows: int,
+        cols: int,
+        fill: int = 255,
+    ) -> np.ndarray:
+        """Build a stroke alpha mask that fully paints the given cells."""
+        alpha = np.zeros((rows * cell_px, cols * cell_px), dtype=np.uint8)
+        for row, col in cells:
+            y0, x0 = row * cell_px, col * cell_px
+            alpha[y0 : y0 + cell_px, x0 : x0 + cell_px] = fill
+        return alpha
+
+    def test_alpha_maps_painted_cells(self) -> None:
+        alpha = self._alpha_for_cells([(0, 0), (1, 2)], cell_px=10, rows=3, cols=3)
+        touched = cells_from_stroke_alpha(alpha, cell_px=10, rows=3, cols=3)
+        self.assertEqual(touched, {(0, 0), (1, 2)})
+
+    def test_empty_alpha_yields_no_cells(self) -> None:
+        alpha = np.zeros((30, 30), dtype=np.uint8)
+        self.assertEqual(cells_from_stroke_alpha(alpha, cell_px=10, rows=3, cols=3), set())
+
+    def test_faint_bleed_below_coverage_is_ignored(self) -> None:
+        # A single faint pixel in a cell should not count as touched.
+        alpha = np.zeros((30, 30), dtype=np.uint8)
+        alpha[0, 0] = 255  # 1 / 100 pixels = 1% < default 2% coverage gate
+        touched = cells_from_stroke_alpha(alpha, cell_px=10, rows=3, cols=3)
+        self.assertEqual(touched, set())
+
+    def test_stroke_image_uses_alpha_channel(self) -> None:
+        rgba = np.zeros((20, 20, 4), dtype=np.uint8)
+        rgba[0:10, 0:10, 3] = 255  # paint cell (0, 0) via alpha
+        touched = cells_from_stroke_image(rgba, cell_px=10, rows=2, cols=2)
+        self.assertEqual(touched, {(0, 0)})
+
+    def test_stroke_image_rejects_non_rgba(self) -> None:
+        with self.assertRaisesRegex(ValueError, "RGBA"):
+            cells_from_stroke_image(np.zeros((10, 10), dtype=np.uint8), 5, 2, 2)
+
+    def test_apply_brush_to_cells_paints_all_obstacles(self) -> None:
+        grid = create_empty_grid(4, 4)
+        apply_brush_to_cells(grid, {(1, 1), (1, 2), (2, 2)}, BRUSH_OBSTACLE)
+        self.assertEqual(int(grid[1, 1]), OBSTACLE)
+        self.assertEqual(int(grid[1, 2]), OBSTACLE)
+        self.assertEqual(int(grid[2, 2]), OBSTACLE)
+
+    def test_apply_brush_to_cells_collapses_start_to_one(self) -> None:
+        grid = create_empty_grid(5, 5)
+        apply_brush_to_cells(grid, {(2, 2), (2, 3), (3, 2)}, BRUSH_START)
+        self.assertEqual(count_markers(grid)[0], 1)
+
+    def test_apply_brush_to_cells_ignores_empty_set(self) -> None:
+        grid = create_empty_grid(4, 4)
+        before = grid.copy()
+        apply_brush_to_cells(grid, set(), BRUSH_OBSTACLE)
+        self.assertTrue(np.array_equal(grid, before))
 
 
 if __name__ == "__main__":

@@ -62,6 +62,98 @@ def apply_brush(grid: np.ndarray, row: int, col: int, brush: str) -> np.ndarray:
     return grid
 
 
+def cells_from_stroke_alpha(
+    alpha: np.ndarray,
+    cell_px: int,
+    rows: int,
+    cols: int,
+    alpha_threshold: int = 32,
+    min_coverage: float = 0.02,
+) -> set[tuple[int, int]]:
+    """Map a stroke alpha mask (at canvas resolution) to the set of touched cells.
+
+    A cell counts as touched when the fraction of its pixels whose alpha exceeds
+    ``alpha_threshold`` is at least ``min_coverage``. The coverage gate ignores
+    faint anti-aliased bleed into neighbouring cells so a stroke only paints the
+    cells it actually passes through.
+    """
+    if alpha.ndim != 2:
+        raise ValueError("alpha mask must be a 2D array.")
+    if cell_px <= 0:
+        raise ValueError("cell_px must be positive.")
+
+    touched: set[tuple[int, int]] = set()
+    for row in range(rows):
+        y0 = row * cell_px
+        y1 = y0 + cell_px
+        for col in range(cols):
+            x0 = col * cell_px
+            x1 = x0 + cell_px
+            block = alpha[y0:y1, x0:x1]
+            if block.size == 0:
+                continue
+            covered = int(np.count_nonzero(block >= alpha_threshold))
+            if covered / block.size >= min_coverage:
+                touched.add((row, col))
+    return touched
+
+
+def cells_from_stroke_image(
+    image_data,
+    cell_px: int,
+    rows: int,
+    cols: int,
+    **kwargs,
+) -> set[tuple[int, int]]:
+    """Extract touched cells from a drawable-canvas RGBA stroke image.
+
+    ``image_data`` is the (H, W, 4) array returned by ``st_canvas`` holding only
+    the drawn strokes (the background grid is not included by the component).
+    """
+    array = np.asarray(image_data)
+    if array.ndim != 3 or array.shape[2] < 4:
+        raise ValueError("image_data must be an (H, W, 4) RGBA array.")
+    alpha = array[:, :, 3]
+    return cells_from_stroke_alpha(alpha, cell_px, rows, cols, **kwargs)
+
+
+def _pick_single_cell(cells: set[tuple[int, int]]) -> tuple[int, int]:
+    """Pick one representative cell (nearest the centroid) for start/goal strokes."""
+    cell_list = list(cells)
+    mean_row = sum(row for row, _ in cell_list) / len(cell_list)
+    mean_col = sum(col for _, col in cell_list) / len(cell_list)
+    return min(
+        cell_list,
+        key=lambda rc: ((rc[0] - mean_row) ** 2 + (rc[1] - mean_col) ** 2, rc),
+    )
+
+
+def apply_brush_to_cells(
+    grid: np.ndarray,
+    cells: set[tuple[int, int]],
+    brush: str,
+) -> np.ndarray:
+    """Paint a set of cells with the selected brush, keeping start/goal unique.
+
+    Obstacle and erase brushes paint every touched cell. Start and goal are
+    single-valued, so a multi-cell stroke collapses to one representative cell.
+    Mutates ``grid`` in place and returns it.
+    """
+    if brush not in BRUSH_VALUES:
+        raise ValueError(f"Unknown brush '{brush}'.")
+    if not cells:
+        return grid
+
+    if brush in (BRUSH_START, BRUSH_GOAL):
+        row, col = _pick_single_cell(cells)
+        apply_brush(grid, row, col, brush)
+    else:
+        for row, col in cells:
+            if 0 <= row < grid.shape[0] and 0 <= col < grid.shape[1]:
+                apply_brush(grid, row, col, brush)
+    return grid
+
+
 def count_markers(grid: np.ndarray) -> tuple[int, int]:
     """Return (start_count, goal_count) currently painted on the grid."""
     start_count = int(np.count_nonzero(grid == START))
