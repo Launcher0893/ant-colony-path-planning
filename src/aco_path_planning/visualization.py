@@ -108,3 +108,58 @@ def format_path_coordinates(path: list[Coordinate]) -> str:
     if not path:
         return "[]"
     return " -> ".join(f"({row}, {col})" for row, col in path)
+
+
+# Cell colors for the interactive editor canvas, keyed by raw grid value.
+_EDITOR_CELL_COLORS = {
+    0: (248, 248, 248),  # empty
+    1: (48, 52, 63),     # obstacle
+    2: (31, 119, 180),   # start
+    3: (214, 39, 40),    # goal
+}
+_EDITOR_GRID_LINE_COLOR = (200, 200, 200)
+
+
+def render_editor_canvas(grid: np.ndarray, cell_px: int = 32):
+    """Render the editable grid as a PIL image with one square per cell.
+
+    Returns a PIL.Image. Click coordinates from the image map back to a cell via
+    ``cell_from_click``: row = y // cell_px, col = x // cell_px. Drawn at native
+    resolution so the click-to-cell mapping stays exact (no display scaling).
+    """
+    from PIL import Image, ImageDraw
+
+    rows, cols = int(grid.shape[0]), int(grid.shape[1])
+    width = cols * cell_px
+    height = rows * cell_px
+    image = Image.new("RGB", (width, height), color=(255, 255, 255))
+    draw = ImageDraw.Draw(image)
+
+    for row in range(rows):
+        for col in range(cols):
+            value = int(grid[row, col])
+            color = _EDITOR_CELL_COLORS.get(value, _EDITOR_CELL_COLORS[0])
+            x0 = col * cell_px
+            y0 = row * cell_px
+            draw.rectangle([x0, y0, x0 + cell_px - 1, y0 + cell_px - 1], fill=color)
+
+    for row in range(rows + 1):
+        y = min(row * cell_px, height - 1)
+        draw.line([(0, y), (width, y)], fill=_EDITOR_GRID_LINE_COLOR, width=1)
+    for col in range(cols + 1):
+        x = min(col * cell_px, width - 1)
+        draw.line([(x, 0), (x, height)], fill=_EDITOR_GRID_LINE_COLOR, width=1)
+
+    return image
+
+
+def cell_from_click(x: float, y: float, cell_px: int, rows: int, cols: int) -> Coordinate | None:
+    """Convert a click position on the editor canvas to a (row, col) cell.
+
+    Returns None when the click falls outside the grid bounds.
+    """
+    col = int(x // cell_px)
+    row = int(y // cell_px)
+    if 0 <= row < rows and 0 <= col < cols:
+        return (row, col)
+    return None

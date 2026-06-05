@@ -178,8 +178,27 @@ MAP_CATEGORY_ORDER = [
 ]
 
 
+CUSTOM_CATEGORY = "custom"
+
+
+def _fallback_metadata(file_name: str) -> MapMetadata:
+    """Metadata for maps not in the curated catalog (e.g. user-saved custom maps)."""
+    stem = file_name[:-4] if file_name.endswith(".csv") else file_name
+    return MapMetadata(
+        display_name=f"custom / {stem}",
+        category=CUSTOM_CATEGORY,
+        description="自定义地图，由前端编辑器保存。",
+        expected_solvable=True,
+        start=(0, 0),
+        goal=(0, 0),
+    )
+
+
 def get_map_metadata(file_name: str) -> MapMetadata:
-    return MAP_CATALOG[file_name]
+    metadata = MAP_CATALOG.get(file_name)
+    if metadata is None:
+        return _fallback_metadata(file_name)
+    return metadata
 
 
 def get_sorted_map_files(file_names: list[str]) -> list[str]:
@@ -187,7 +206,7 @@ def get_sorted_map_files(file_names: list[str]) -> list[str]:
     return sorted(
         file_names,
         key=lambda file_name: (
-            category_rank.get(MAP_CATALOG[file_name].category, 999),
-            MAP_CATALOG[file_name].display_name,
+            category_rank.get(get_map_metadata(file_name).category, 999),
+            get_map_metadata(file_name).display_name,
         ),
     )

@@ -11,7 +11,11 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from aco_path_planning import AcoParams, load_grid_map, solve_path
-from aco_path_planning.map_catalog import get_map_metadata
+from aco_path_planning.map_catalog import (
+    CUSTOM_CATEGORY,
+    get_map_metadata,
+    get_sorted_map_files,
+)
 
 
 EXPECTED_MAPS = {
@@ -93,6 +97,21 @@ class MapCatalogTests(unittest.TestCase):
                 self.assertGreaterEqual(len(unique_values), 2)
                 self.assertIsNotNone(result.best_iteration)
                 self.assertGreater(result.best_iteration, 1)
+
+
+class CustomMapFallbackTests(unittest.TestCase):
+    def test_unknown_map_gets_custom_fallback_metadata(self) -> None:
+        metadata = get_map_metadata("custom_20260605_123000_1.csv")
+        self.assertEqual(metadata.category, CUSTOM_CATEGORY)
+        self.assertIn("custom", metadata.display_name)
+
+    def test_known_map_still_returns_curated_metadata(self) -> None:
+        metadata = get_map_metadata("easy.csv")
+        self.assertEqual(metadata.category, "easy")
+
+    def test_sorted_files_place_custom_maps_last(self) -> None:
+        ordered = get_sorted_map_files(["custom_demo.csv", "easy.csv", "medium.csv"])
+        self.assertEqual(ordered[-1], "custom_demo.csv")
 
 
 if __name__ == "__main__":

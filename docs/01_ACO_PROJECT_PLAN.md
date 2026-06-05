@@ -29,7 +29,10 @@ ant-colony-path-planning/
 │       └── streamlit/
 ├── docs/                    # 技术文档、参考分析、开发计划、实验记录
 │   ├── 00_REF_GA_PATH_PLANNING.md
-│   └── 01_ACO_PROJECT_PLAN.md
+│   ├── 01_ACO_PROJECT_PLAN.md
+│   ├── 02_EXPERIMENT_LOG.md
+│   ├── 03_RUNBOOK.md
+│   └── 04_EXPERIMENT_RESULTS.md
 ├── references/              # 老师给的参考项目，保留原样，不作为主实现目录
 ├── scripts/                 # 可直接运行的脚本入口
 │   ├── run_cli.py
@@ -110,13 +113,13 @@ ant-colony-path-planning/
 - 已开始为同类型地图提供多张变体。
 - 已支持历史最优、本轮最优/平均、成功路径数三类收敛指标。
 - 已在地图信息区显示地图类别与特点说明。
+- 已完成真实实验结果文档与图片引用。
 - 已提供 PyCharm / VS Code 可直接运行的根入口。
 
 未完全完成或后续可加强：
 
-- 参数说明、实验结果记录、截图留档还不完整。
-- 尚未提供老师可能需要的“实验报告式”章节文档。
-- 尚未增加批量实验脚本与结果导出功能。
+- 参数说明、实验结果记录、截图留档仍可继续增强。
+- 尚未增加更系统化的批量实验脚本。
 - 尚未做更强的结果复现实验和性能比较。
 
 ---
@@ -772,9 +775,9 @@ streamlit run scripts/run_streamlit.py
 
 ### 12.3 课设交付层局限
 
-- 还没有“实验报告”版本文档。
 - 还没有整理算法流程图。
 - 还没有固定一组用于答辩演示的参数模板。
+- 课程设计正文报告尚未从现有技术文档中重新组织成学校格式。
 
 ---
 
@@ -809,10 +812,10 @@ streamlit run scripts/run_streamlit.py
 
 ### 第四优先级：课设材料补完
 
-1. 新建实验记录文档，例如 `docs/02_EXPERIMENT_LOG.md`
-2. 新建运行说明文档，例如 `docs/03_RUNBOOK.md`
-3. 新建答辩提纲文档，例如 `docs/04_DEFENSE_NOTES.md`
-4. 整理结果截图和参数对比表
+1. 新建课程设计正文报告，例如 `docs/05_COURSE_DESIGN_REPORT.md`
+2. 新建答辩提纲文档，例如 `docs/04_DEFENSE_NOTES.md`
+3. 整理算法流程图
+4. 进一步美化实验截图和参数对比表
 
 ---
 

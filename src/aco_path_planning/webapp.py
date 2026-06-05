@@ -5,132 +5,220 @@ from pathlib import Path
 import streamlit as st
 
 from .config import DEFAULT_MAP_DIR, DEFAULT_PARAM_FILE, DEFAULT_STREAMLIT_OUTPUT_DIR
+from .custom_map import (
+    BRUSH_ERASE,
+    BRUSH_GOAL,
+    BRUSH_OBSTACLE,
+    BRUSH_START,
+    apply_brush,
+    build_grid_map_from_array,
+    count_markers,
+    create_empty_grid,
+    is_ready_to_save,
+    resolve_map_filename,
+    save_custom_map,
+)
 from .map_catalog import get_map_metadata, get_sorted_map_files
 from .map_loader import discover_map_files, load_grid_map
 from .models import AcoParams
 from .output_writer import save_planning_artifacts
 from .solver import solve_path
 from .visualization import (
+    cell_from_click,
     format_path_coordinates,
     plot_convergence,
     plot_grid_map,
     plot_length_comparison,
     plot_success_count,
+    render_editor_canvas,
 )
+
+try:
+    from streamlit_image_coordinates import streamlit_image_coordinates
+
+    _HAS_IMAGE_COORDS = True
+except ImportError:  # pragma: no cover - depends on optional dependency
+    _HAS_IMAGE_COORDS = False
+
+_BRUSH_BY_LABEL = {
+    "障碍": BRUSH_OBSTACLE,
+    "起点": BRUSH_START,
+    "终点": BRUSH_GOAL,
+    "擦除": BRUSH_ERASE,
+}
+_EDITOR_MAX_CANVAS_PX = 560
 
 
 def main() -> None:
-    map_files = discover_map_files(DEFAULT_MAP_DIR)
-    sorted_file_names = get_sorted_map_files([path.name for path in map_files])
-    path_by_name = {path.name: path for path in map_files}
     defaults = _load_defaults()
 
     st.set_page_config(page_title="ACO Path Planning", layout="wide")
     st.title("基于蚁群算法的栅格路径规划系统")
-    st.caption("从 CSV 栅格地图读取起点、终点和障碍物信息，并进行路径规划。")
-
-    if not map_files:
-        st.error("未找到可用地图文件，请先在 data/maps/ 目录下添加 CSV 地图。")
-        return
+    st.caption("从 CSV 栅格地图读取或在前端自定义绘制地图，并进行路径规划。")
 
     with st.sidebar:
+        st.header("地图来源")
+        map_source = st.radio(
+            "选择地图来源",
+            ("示例地图", "自定义地图"),
+            key="map_source",
+        )
+
+        selected_map_path: Path | None = None
+        if map_source == "示例地图":
+            map_files = discover_map_files(DEFAULT_MAP_DIR)
+            if map_files:
+                sorted_file_names = get_sorted_map_files([path.name for path in map_files])
+                path_by_name = {path.name: path for path in map_files}
+                selected_map_name = st.selectbox(
+                    "选择地图",
+                    options=sorted_file_names,
+                    format_func=lambda file_name: get_map_metadata(file_name).display_name,
+                    index=0,
+                    key="selected_map",
+                )
+                selected_map_path = path_by_name[selected_map_name]
+
         st.header("参数设置")
-        selected_map_name = st.selectbox(
-            "选择地图",
-            options=sorted_file_names,
-            format_func=lambda file_name: get_map_metadata(file_name).display_name,
-            index=0,
-        )
-        ant_count = st.number_input(
-            "蚂蚁数量",
-            min_value=1,
-            value=int(defaults.ant_count),
-            step=1,
-        )
-        iterations = st.number_input(
-            "迭代次数",
-            min_value=1,
-            value=int(defaults.iterations),
-            step=1,
-        )
-        alpha = st.number_input(
-            "alpha（信息素重要程度）",
-            min_value=0.0,
-            value=float(defaults.alpha),
-            step=0.1,
-            help="越大越偏向跟随高信息素路径。",
-        )
-        beta = st.number_input(
-            "beta（启发函数重要程度）",
-            min_value=0.0,
-            value=float(defaults.beta),
-            step=0.1,
-            help="越大越偏向选择更接近目标的方向。",
-        )
-        evaporation_rate = st.number_input(
-            "rho（全局信息素挥发率）",
-            min_value=0.0,
-            max_value=0.99,
-            value=float(defaults.evaporation_rate),
-            step=0.05,
-            help="每轮结束后全局信息素衰减比例。",
-        )
-        pheromone_deposit_q = st.number_input(
-            "Q（信息素沉积常数）",
-            min_value=1.0,
-            value=float(defaults.pheromone_deposit_q),
-            step=1.0,
-            help="成功路径每轮沉积信息素的基准强度。",
-        )
-        initial_pheromone = st.number_input(
-            "初始信息素 tau0",
-            min_value=0.1,
-            value=float(defaults.initial_pheromone),
-            step=0.1,
-            help="所有可通行节点的初始信息素水平。",
-        )
-        local_evaporation_rate = st.number_input(
-            "局部 rho（局部信息素挥发率）",
-            min_value=0.0,
-            max_value=0.99,
-            value=float(defaults.local_evaporation_rate),
-            step=0.01,
-            help="单只蚂蚁走过路径后执行局部更新的强度。",
-        )
-        elite_enabled = st.checkbox(
-            "启用精英强化",
-            value=bool(defaults.elite_enabled),
-            help="是否对当前全局最优路径进行额外信息素强化。",
-        )
-        elite_weight = st.number_input(
-            "精英权重（最优路径额外强化倍数）",
-            min_value=0.0,
-            value=float(defaults.elite_weight),
-            step=0.1,
-            help="精英路径相对普通成功路径的额外强化倍数。",
-        )
-        random_seed = st.number_input(
-            "随机种子",
-            min_value=0,
-            value=int(defaults.random_seed if defaults.random_seed is not None else 42),
-            step=1,
-            help="固定随机过程，方便复现实验。",
-        )
+        params = _render_sidebar_params(defaults)
         save_output = st.checkbox(
             "保存本次结果",
             value=False,
+            key="save_output",
             help="将图片、路径和 JSON 结果写入 data/outputs/。",
         )
         run_clicked = st.button("开始规划", type="primary")
 
-    selected_map_path = path_by_name[selected_map_name]
+    if map_source == "示例地图":
+        if selected_map_path is None:
+            st.error("未找到可用地图文件，请先在 data/maps/ 目录下添加 CSV 地图。")
+            return
+        _run_example_mode(selected_map_path, params, save_output, run_clicked)
+    else:
+        _run_custom_mode(params, save_output, run_clicked)
+
+
+def _render_sidebar_params(defaults: AcoParams) -> AcoParams:
+    ant_count = st.number_input(
+        "蚂蚁数量",
+        min_value=1,
+        value=int(defaults.ant_count),
+        step=1,
+        key="p_ant_count",
+    )
+    iterations = st.number_input(
+        "迭代次数",
+        min_value=1,
+        value=int(defaults.iterations),
+        step=1,
+        key="p_iterations",
+    )
+    alpha = st.number_input(
+        "alpha（信息素重要程度）",
+        min_value=0.0,
+        value=float(defaults.alpha),
+        step=0.1,
+        key="p_alpha",
+        help="越大越偏向跟随高信息素路径。",
+    )
+    beta = st.number_input(
+        "beta（启发函数重要程度）",
+        min_value=0.0,
+        value=float(defaults.beta),
+        step=0.1,
+        key="p_beta",
+        help="越大越偏向选择更接近目标的方向。",
+    )
+    evaporation_rate = st.number_input(
+        "rho（全局信息素挥发率）",
+        min_value=0.0,
+        max_value=0.99,
+        value=float(defaults.evaporation_rate),
+        step=0.05,
+        key="p_rho",
+        help="每轮结束后全局信息素衰减比例。",
+    )
+    pheromone_deposit_q = st.number_input(
+        "Q（信息素沉积常数）",
+        min_value=1.0,
+        value=float(defaults.pheromone_deposit_q),
+        step=1.0,
+        key="p_q",
+        help="成功路径每轮沉积信息素的基准强度。",
+    )
+    initial_pheromone = st.number_input(
+        "初始信息素 tau0",
+        min_value=0.1,
+        value=float(defaults.initial_pheromone),
+        step=0.1,
+        key="p_tau0",
+        help="所有可通行节点的初始信息素水平。",
+    )
+    local_evaporation_rate = st.number_input(
+        "局部 rho（局部信息素挥发率）",
+        min_value=0.0,
+        max_value=0.99,
+        value=float(defaults.local_evaporation_rate),
+        step=0.01,
+        key="p_local_rho",
+        help="单只蚂蚁走过路径后执行局部更新的强度。",
+    )
+    elite_enabled = st.checkbox(
+        "启用精英强化",
+        value=bool(defaults.elite_enabled),
+        key="p_elite_enabled",
+        help="是否对当前全局最优路径进行额外信息素强化。",
+    )
+    elite_weight = st.number_input(
+        "精英权重（最优路径额外强化倍数）",
+        min_value=0.0,
+        value=float(defaults.elite_weight),
+        step=0.1,
+        key="p_elite_weight",
+        help="精英路径相对普通成功路径的额外强化倍数。",
+    )
+    random_seed = st.number_input(
+        "随机种子",
+        min_value=0,
+        value=int(defaults.random_seed if defaults.random_seed is not None else 42),
+        step=1,
+        key="p_seed",
+        help="固定随机过程，方便复现实验。",
+    )
+
+    return AcoParams(
+        ant_count=int(ant_count),
+        iterations=int(iterations),
+        alpha=float(alpha),
+        beta=float(beta),
+        evaporation_rate=float(evaporation_rate),
+        pheromone_deposit_q=float(pheromone_deposit_q),
+        initial_pheromone=float(initial_pheromone),
+        local_evaporation_rate=float(local_evaporation_rate),
+        elite_enabled=bool(elite_enabled),
+        elite_weight=float(elite_weight),
+        random_seed=int(random_seed),
+    )
+
+
+def _run_example_mode(
+    selected_map_path: Path,
+    params: AcoParams,
+    save_output: bool,
+    run_clicked: bool,
+) -> None:
     grid_map = load_grid_map(selected_map_path)
-    metadata = get_map_metadata(selected_map_name)
+    metadata = get_map_metadata(selected_map_path.name)
 
     info_col, preview_col = st.columns([1.2, 0.8])
     with info_col:
         st.subheader("地图信息")
-        st.write(f"文件: `{selected_map_path.relative_to(Path.cwd()) if selected_map_path.is_relative_to(Path.cwd()) else selected_map_path.name}`")
+        relative_or_name = (
+            selected_map_path.relative_to(Path.cwd())
+            if selected_map_path.is_relative_to(Path.cwd())
+            else selected_map_path.name
+        )
+        st.write(f"文件: `{relative_or_name}`")
         st.write(f"尺寸: `{grid_map.rows} x {grid_map.cols}`")
         st.write(f"起点: `{grid_map.start}`")
         st.write(f"终点: `{grid_map.goal}`")
@@ -152,21 +240,111 @@ def main() -> None:
         st.info("调整参数后点击“开始规划”执行路径搜索。")
         return
 
-    params = AcoParams(
-        ant_count=int(ant_count),
-        iterations=int(iterations),
-        alpha=float(alpha),
-        beta=float(beta),
-        evaporation_rate=float(evaporation_rate),
-        pheromone_deposit_q=float(pheromone_deposit_q),
-        initial_pheromone=float(initial_pheromone),
-        local_evaporation_rate=float(local_evaporation_rate),
-        elite_enabled=bool(elite_enabled),
-        elite_weight=float(elite_weight),
-        random_seed=int(random_seed),
-    )
     result = solve_path(grid_map, params)
+    _render_results(grid_map, params, result, save_output)
 
+
+def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) -> None:
+    st.subheader("自定义地图编辑器")
+    if not _HAS_IMAGE_COORDS:
+        st.error(
+            "缺少 streamlit-image-coordinates 组件，请运行 "
+            "`pip install streamlit-image-coordinates` 后重新启动。"
+        )
+        return
+
+    size_col1, size_col2, size_col3 = st.columns([1, 1, 1])
+    with size_col1:
+        rows = st.number_input("行数", min_value=2, max_value=40, value=10, step=1, key="editor_rows")
+    with size_col2:
+        cols = st.number_input("列数", min_value=2, max_value=40, value=10, step=1, key="editor_cols")
+    with size_col3:
+        st.write("")
+        st.write("")
+        create_clicked = st.button("创建 / 重置画布")
+
+    if create_clicked or "editor_grid" not in st.session_state:
+        st.session_state["editor_grid"] = create_empty_grid(int(rows), int(cols))
+        st.session_state["editor_last_click"] = None
+
+    grid = st.session_state["editor_grid"]
+    grid_rows, grid_cols = int(grid.shape[0]), int(grid.shape[1])
+
+    brush_label = st.radio(
+        "选择画笔",
+        ("障碍", "起点", "终点", "擦除"),
+        horizontal=True,
+        key="editor_brush",
+    )
+    brush = _BRUSH_BY_LABEL[brush_label]
+
+    # Reset click dedup when the brush changes so the same cell can be re-painted.
+    if st.session_state.get("editor_prev_brush") != brush_label:
+        st.session_state["editor_prev_brush"] = brush_label
+        st.session_state["editor_last_click"] = None
+
+    st.caption("点击格子绘制：蓝色=起点，红色=终点，深色=障碍，浅色=空地。起点与终点全图唯一。")
+
+    cell_px = max(10, min(30, _EDITOR_MAX_CANVAS_PX // max(grid_rows, grid_cols)))
+    canvas_image = render_editor_canvas(grid, cell_px=cell_px)
+    coords = streamlit_image_coordinates(canvas_image, key="editor_canvas")
+
+    if coords is not None:
+        click = (coords["x"], coords["y"])
+        if st.session_state.get("editor_last_click") != click:
+            st.session_state["editor_last_click"] = click
+            cell = cell_from_click(coords["x"], coords["y"], cell_px, grid_rows, grid_cols)
+            if cell is not None:
+                apply_brush(grid, cell[0], cell[1], brush)
+                st.session_state["editor_grid"] = grid
+                st.rerun()
+
+    start_count, goal_count = count_markers(grid)
+    ready = is_ready_to_save(grid)
+    status_col1, status_col2 = st.columns(2)
+    status_col1.metric("起点数量", start_count)
+    status_col2.metric("终点数量", goal_count)
+    if not ready:
+        st.warning("需要恰好一个起点和一个终点，才能保存或规划。")
+
+    st.subheader("保存地图")
+    name_col, button_col = st.columns([2, 1])
+    with name_col:
+        map_name = st.text_input("地图名称（留空则按时间自动命名）", key="editor_name")
+    with button_col:
+        st.write("")
+        st.write("")
+        save_clicked = st.button("保存地图")
+
+    if save_clicked:
+        if not ready:
+            st.error("地图尚未就绪，无法保存。")
+        else:
+            existing = [path.name for path in discover_map_files(DEFAULT_MAP_DIR)]
+            file_name = resolve_map_filename(map_name, existing)
+            saved_path = save_custom_map(grid, file_name, DEFAULT_MAP_DIR)
+            st.success(
+                f"地图已保存：`{saved_path.name}`，可在“示例地图”来源中选择复用。"
+            )
+
+    if not run_clicked:
+        st.info("绘制完成后，点击侧边栏“开始规划”。")
+        return
+    if not ready:
+        st.error("地图尚未就绪（需要恰好一个起点和一个终点），无法规划。")
+        return
+
+    grid_map = build_grid_map_from_array(grid)
+    result = solve_path(grid_map, params)
+    _render_results(grid_map, params, result, save_output)
+
+
+def _render_results(
+    grid_map,
+    params: AcoParams,
+    result,
+    save_output: bool,
+) -> None:
     metric_col_1, metric_col_2, metric_col_3 = st.columns(3)
     metric_col_1.metric("是否找到路径", "是" if result.found else "否")
     metric_col_2.metric(

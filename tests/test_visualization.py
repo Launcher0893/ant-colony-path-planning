@@ -10,10 +10,13 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from aco_path_planning import AcoParams, load_grid_map, solve_path
+from aco_path_planning.custom_map import create_empty_grid
 from aco_path_planning.visualization import (
+    cell_from_click,
     plot_convergence,
     plot_length_comparison,
     plot_success_count,
+    render_editor_canvas,
 )
 
 
