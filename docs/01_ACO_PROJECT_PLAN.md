@@ -43,9 +43,12 @@ ant-colony-path-planning/
 │       ├── __init__.py
 │       ├── cli.py
 │       ├── config.py
+│       ├── custom_map.py     # 自定义地图编辑器纯逻辑（画笔、笔画栅格化、命名、保存）
 │       ├── grid.py
+│       ├── map_catalog.py
 │       ├── map_loader.py
 │       ├── models.py
+│       ├── output_writer.py
 │       ├── solver.py
 │       ├── visualization.py
 │       └── webapp.py
@@ -115,6 +118,10 @@ ant-colony-path-planning/
 - 已在地图信息区显示地图类别与特点说明。
 - 已完成真实实验结果文档与图片引用。
 - 已提供 PyCharm / VS Code 可直接运行的根入口。
+- 已在 Streamlit 增加「自定义地图」来源，可在前端先设置地图尺寸，再用画布绘制地图。
+- 自定义地图编辑器支持鼠标按住拖动连续上色，松开后将笔画栅格化为经过的格子并按当前画笔着色。
+- 提供障碍 / 起点 / 终点 / 擦除四种画笔，起点与终点保持全图唯一（多格笔画自动收敛为单个代表格）。
+- 自定义地图可选保存为 CSV，保存后可在「示例地图」来源中直接复用。
 
 未完全完成或后续可加强：
 
@@ -410,6 +417,8 @@ tau = (1 - local_rho) * tau + local_rho * tau0
 
 这是从“外部文件”进入“内部模型”的唯一入口。
 
+其中 `build_grid_map_from_cells` 抽出了“原始 0/1/2/3 整数网格 -> 校验 -> 归一化 -> GridMap”的公共逻辑，由 CSV 文件加载和 `custom_map` 的内存建图共用，保证起终点唯一性、合法值和归一化规则只在一处维护。
+
 ### 7.4 `src/aco_path_planning/grid.py`
 
 负责纯网格层工具函数：
@@ -479,6 +488,7 @@ tau = (1 - local_rho) * tau + local_rho * tau0
 
 负责 Streamlit 页面：
 
+- 地图来源切换（示例地图 / 自定义地图）
 - 地图选择
 - 参数输入
 - 参数中文释义与提示说明
@@ -488,6 +498,19 @@ tau = (1 - local_rho) * tau + local_rho * tau0
 - 显示成功路径总数
 - 可选保存本次结果
 - 路径图和多类收敛图展示
+- 自定义地图编辑器（设尺寸、选画笔、拖动上色、保存为 CSV）
+
+自定义地图编辑器要点：
+
+- 采用 `streamlit-drawable-canvas` 的 `freedraw` 模式，按住鼠标拖动绘制，
+  松开后将笔画栅格化为经过的格子并按当前画笔着色，一次拖动只需一次往返，
+  解决逐格点击响应慢的问题。
+- 画布顶部装有 `_patch_image_to_url` 兼容垫片：Streamlit 1.50 把 `image_to_url`
+  从 `streamlit.elements.image` 迁到了 `streamlit.elements.lib.image_utils`，
+  且第二个参数由 `width: int` 改成了 `layout_config: LayoutConfig`。垫片把组件的
+  int 宽度包装成 `LayoutConfig` 后转调新函数，并挂回旧模块位置。
+- 兼容垫片或组件任一不可用时，自动回退到基于 `streamlit-image-coordinates` 的
+  逐格点击编辑器，页面不崩。
 
 ### 7.8.1 `src/aco_path_planning/map_catalog.py`
 
@@ -498,6 +521,23 @@ tau = (1 - local_rho) * tau + local_rho * tau0
 - 地图特点描述
 - 预期可解性
 - 起点与终点校验信息
+
+对不在精选目录内的地图（例如前端保存的自定义地图）返回兜底元数据，
+类别标为 `custom`，排序排到最后，避免 `KeyError`。
+
+### 7.8.2 `src/aco_path_planning/custom_map.py`
+
+负责自定义地图编辑器的纯逻辑（不依赖 Streamlit，可单测）：
+
+- `create_empty_grid`：按尺寸生成空网格，默认左上起点、右下终点
+- `apply_brush` / `apply_brush_to_cells`：单格或多格上色，保持起终点全图唯一
+- `cells_from_stroke_alpha` / `cells_from_stroke_image`：把画布笔画的 alpha
+  掩码栅格化为经过的格子集合；起点 / 终点笔画即使划过多格也收敛为单个代表格
+- `count_markers` / `is_ready_to_save`：校验是否恰好一个起点和一个终点
+- `build_grid_map_from_array`：从内存网格构造 `GridMap`（复用加载器校验）
+- `sanitize_map_name` / `generate_custom_map_name` / `resolve_map_filename`：
+  地图命名，留空则按 `custom_<时间戳>_<序号>` 生成
+- `save_custom_map`：校验后写出 CSV 到 `data/maps/`
 
 ### 7.9 `scripts/summarize_results.py`
 
@@ -657,6 +697,7 @@ streamlit run scripts/run_streamlit.py
 - `tests/test_map_catalog.py`
 - `tests/test_summarize_results.py`
 - `tests/test_visualization.py`
+- `tests/test_custom_map.py`
 
 ### 10.2 已覆盖内容
 
@@ -708,10 +749,23 @@ streamlit run scripts/run_streamlit.py
 
 - 地图目录内容与元数据一致
 - 每张地图的起点终点和可解性符合预期
+- 目录外地图（自定义地图）返回兜底元数据，不抛 KeyError
+- 自定义地图在排序中排到最后
 
 `test_visualization.py`
 
 - 多种收敛图函数都能正常生成 figure
+- 编辑器画布渲染与点击坐标到格子的换算
+
+`test_custom_map.py`
+
+- 空画布创建与默认起终点
+- 四种画笔上色，起点/终点保持全图唯一
+- 起终点数量校验与就绪判断
+- 地图命名清洗、时间戳序号自动命名
+- 内存网格建图与 CSV 保存、回读一致
+- 笔画 alpha 掩码栅格化为经过的格子集合
+- 多格起终点笔画收敛为单个代表格
 
 ### 10.3 当前测试不足
 
@@ -750,6 +804,9 @@ streamlit run scripts/run_streamlit.py
 19. 完成多收敛指标记录与展示。
 20. 完成同类地图变体扩展。
 21. 完成地图元数据与特点说明展示。
+22. 完成 Streamlit 自定义地图编辑器：先设尺寸，再用鼠标拖动在方格画布上绘制障碍、起点、终点和擦除，松手后将笔画栅格化为经过的格子并着色，起点终点保持全图唯一。
+23. 完成自定义地图保存为 CSV：可命名，留空则按 `custom_<时间戳>_<序号>` 自动命名，存入 `data/maps/` 后可在示例地图来源中复用。
+24. 完成 `streamlit-drawable-canvas` 与 Streamlit 1.50 的兼容适配（`image_to_url` 签名垫片），并在组件不可用时自动回退到点击版编辑器。
 
 ---
 
@@ -772,6 +829,7 @@ streamlit run scripts/run_streamlit.py
 - 未做日志系统。
 - 未做批量实验脚本。
 - 未做更正式的配置 schema 校验。
+- 自定义地图的拖动画布依赖 `streamlit-drawable-canvas 0.9.3`，该组件已停更，且依赖 Streamlit 内部函数 `image_to_url`。当前已用签名垫片适配 Streamlit 1.50；若后续 Streamlit 再次改动该内部函数，垫片可能失效，届时会自动回退到点击版编辑器（功能不丢，仅手感退化）。
 
 ### 12.3 课设交付层局限
 
@@ -797,7 +855,7 @@ streamlit run scripts/run_streamlit.py
 ### 第二优先级：增强课设展示效果
 
 1. 在 Streamlit 中显示参数说明。
-2. 增加地图文件上传功能。
+2. 已支持前端自定义绘制地图（拖动上色 + 保存为 CSV）；后续可再补充直接上传 CSV 地图文件。
 3. 增加每轮最优值表格展示。
 4. 增加“运行耗时”显示。
 5. 增加“是否成功到达终点的蚂蚁数量”统计。

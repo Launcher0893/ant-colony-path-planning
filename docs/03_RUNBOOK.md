@@ -62,8 +62,15 @@ ant-colony-path-planning/
 - `numpy>=1.23`
 - `matplotlib>=3.7`
 - `streamlit>=1.30`
+- `streamlit-image-coordinates>=0.1.6`（自定义地图点击版回退所需）
+- `pillow>=9.0`（自定义地图画布渲染所需）
+- `streamlit-drawable-canvas==0.9.3`（自定义地图拖动上色所需）
 
 依赖定义见 [requirements.txt](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/requirements.txt)。
+
+说明：`streamlit-drawable-canvas` 已停更，且依赖 Streamlit 内部函数 `image_to_url`。
+在 Streamlit 1.50 上，`webapp.py` 启动时会打一个兼容补丁修正该函数的位置与签名变化；
+若补丁或组件不可用，自定义地图会自动回退到逐格点击版，界面不会崩溃。
 
 ---
 
@@ -110,6 +117,12 @@ python -c "import numpy, matplotlib, streamlit; print('deps ok')"
 ```
 
 如果输出 `deps ok`，说明核心依赖已安装成功。
+
+如需验证自定义地图相关组件，可再执行：
+
+```bash
+python -c "import PIL, streamlit_image_coordinates, streamlit_drawable_canvas; print('canvas deps ok')"
+```
 
 ---
 
@@ -324,7 +337,9 @@ streamlit run scripts/run_streamlit.py
 
 当前界面支持：
 
+- 选择地图来源（示例地图 / 自定义地图）
 - 选择地图
+- 在自定义地图来源下绘制地图（设置尺寸、拖动上色、保存为 CSV）
 - 设置蚂蚁数量
 - 设置迭代次数
 - 设置 `alpha`
@@ -360,6 +375,29 @@ streamlit run scripts/run_streamlit.py
 - 当前地图信息区会显示地图类别和简要特点说明
 - 收敛分析已区分为历史最优、本轮最优/本轮平均、每轮成功路径数三类图
 
+### 8.5 自定义地图编辑器使用流程
+
+在左侧边栏“地图来源”选择“自定义地图”后，主区域会显示地图编辑器。操作流程如下：
+
+1. 设置地图行数和列数（范围 2 到 40），点击“创建 / 重置画布”。
+2. 新画布默认在左上角放起点、右下角放终点。
+3. 在“选择画笔”中选择障碍、起点、终点或擦除。
+4. 在画布上**按住鼠标拖动绘制**：松开鼠标后，笔画经过的格子会按当前画笔着色。
+   - 障碍、擦除画笔对划过的每个格子生效。
+   - 起点、终点画笔即使划过多个格子，也只落一个代表格，保持全图唯一。
+5. 界面会实时显示起点数量和终点数量；只有恰好一个起点和一个终点时才能保存或规划。
+6. 在“保存地图”处可选填地图名称：
+   - 填写名称则保存为 `<名称>.csv`。
+   - 留空则按 `custom_<时间戳>_<序号>.csv` 自动命名。
+   - 保存到 `data/maps/` 后，可在“示例地图”来源中重新选择复用。
+7. 绘制完成后，点击侧边栏“开始规划”，即可在自定义地图上运行蚁群算法并查看结果。
+
+说明：
+
+- 拖动绘制依赖 `streamlit-drawable-canvas` 组件。
+- 该组件较旧，本项目在 `webapp.py` 启动时打了一个兼容补丁以适配新版 Streamlit 的 `image_to_url` 接口。
+- 若组件不可用，编辑器会自动回退到“逐格点击”绘制模式，功能不丢，只是手感退化为点一次画一格。
+
 ---
 
 ## 9. 自动化测试
@@ -386,6 +424,7 @@ python -m unittest discover -s tests
 - [test_map_catalog.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_map_catalog.py)
 - [test_summarize_results.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_summarize_results.py)
 - [test_visualization.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_visualization.py)
+- [test_custom_map.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_custom_map.py)
 
 覆盖内容包括：
 
@@ -401,6 +440,9 @@ python -m unittest discover -s tests
 - 地图目录与元数据一致性
 - 结果汇总脚本
 - 收敛图绘制函数
+- 自定义地图画笔、笔画栅格化、命名与保存
+- 自定义地图保存后能被加载器正确读回
+- 地图目录元数据的兜底逻辑
 
 ### 9.3 运行单个测试文件
 
@@ -585,6 +627,27 @@ conda run -n aco_path python main.py --no-plot
 ```
 
 如果直接 `python` 找不到 `numpy`，通常是当前终端没有切到正确解释器。
+
+### 12.7 自定义地图无法拖动绘制
+
+现象：
+
+- 进入“自定义地图”后，编辑器退回到“逐格点击”模式，或提示缺少绘图组件。
+
+原因：
+
+- 缺少 `streamlit-drawable-canvas` 组件，或该组件与当前 Streamlit 版本不兼容。
+
+处理方式：
+
+```bash
+pip install -r requirements.txt
+```
+
+补充说明：
+
+- 拖动绘制依赖 `streamlit-drawable-canvas`，该组件较旧，`webapp.py` 启动时会打一个兼容补丁，适配新版 Streamlit 中 `image_to_url` 的模块位置与参数签名变化。
+- 若补丁或组件仍不可用，编辑器会自动回退到逐格点击模式，功能不丢，只是手感退化。
 
 ---
 
