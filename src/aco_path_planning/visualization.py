@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""可视化与路径格式化工具。
+
+本模块只负责“把结果画出来”或“把坐标格式化”，不负责保存文件。保存逻辑在
+`output_writer.py` 中，这样 CLI、Streamlit 和输出模块可以复用同一批绘图函数。
+"""
+
 import math
 
 import matplotlib.pyplot as plt
@@ -16,8 +22,16 @@ def plot_grid_map(
     figure_size: tuple[float, float] = (7.0, 7.0),
     compact: bool = False,
 ):
+    """绘制地图、起终点和可选的最优路径。
+
+    参数：
+    - `grid_map`：归一化地图，`grid == 1` 的位置显示为障碍。
+    - `result`：可选求解结果；提供后会把 `result.path` 画到地图上。
+    - `compact`：用于 Streamlit 小预览，隐藏坐标轴标题并缩小图例。
+    """
     figure, axis = plt.subplots(figsize=figure_size)
 
+    # Matplotlib 只需要展示空地/障碍。起点终点用 scatter 单独画。
     display_grid = np.zeros_like(grid_map.grid, dtype=float)
     display_grid[grid_map.grid == 1] = 1.0
 
@@ -42,6 +56,7 @@ def plot_grid_map(
     axis.scatter(goal_col, goal_row, c="#d62728", s=120, marker="*", label="Goal")
 
     if result and result.path:
+        # 内部坐标是 (row, col)，绘图坐标需要转换成 x=col, y=row。
         x_coords = [coordinate[1] for coordinate in result.path]
         y_coords = [coordinate[0] for coordinate in result.path]
         axis.plot(x_coords, y_coords, color="#2ca02c", linewidth=2.5, label="Best Path")
@@ -52,6 +67,11 @@ def plot_grid_map(
 
 
 def plot_convergence(history_best_length: list[float]):
+    """绘制历史最优路径长度曲线。
+
+    `history_best_length` 中可能包含 `inf`，表示当前还没有可行路径。绘图前转成
+    `np.nan`，让曲线在这些位置自然断开。
+    """
     figure, axis = plt.subplots(figsize=(7, 4))
 
     y_values = [value if math.isfinite(value) else np.nan for value in history_best_length]
@@ -69,6 +89,10 @@ def plot_length_comparison(
     history_iteration_best_length: list[float],
     history_iteration_mean_length: list[float],
 ):
+    """绘制每轮最优路径长度和每轮平均路径长度。
+
+    这张图用于观察“本轮搜索质量”，和 `plot_convergence` 的历史全局最优视角互补。
+    """
     figure, axis = plt.subplots(figsize=(7, 4))
 
     best_values = [value if math.isfinite(value) else np.nan for value in history_iteration_best_length]
@@ -87,6 +111,7 @@ def plot_length_comparison(
 
 
 def plot_success_count(history_success_count: list[int]):
+    """绘制每轮成功到达终点的蚂蚁数量。"""
     figure, axis = plt.subplots(figsize=(7, 4))
 
     axis.plot(
@@ -105,6 +130,7 @@ def plot_success_count(history_success_count: list[int]):
 
 
 def format_path_coordinates(path: list[Coordinate]) -> str:
+    """把路径坐标列表格式化成便于阅读的文本。"""
     if not path:
         return "[]"
     return " -> ".join(f"({row}, {col})" for row, col in path)
@@ -121,11 +147,10 @@ _EDITOR_GRID_LINE_COLOR = (200, 200, 200)
 
 
 def render_editor_canvas(grid: np.ndarray, cell_px: int = 32):
-    """Render the editable grid as a PIL image with one square per cell.
+    """把自定义地图编辑器的网格渲染为 PIL 图片。
 
-    Returns a PIL.Image. Click coordinates from the image map back to a cell via
-    ``cell_from_click``: row = y // cell_px, col = x // cell_px. Drawn at native
-    resolution so the click-to-cell mapping stays exact (no display scaling).
+    返回值用于 Streamlit 点击版编辑器和拖动画布背景图。图片按原生分辨率绘制，
+    因此点击坐标可以通过 `cell_from_click` 精确换算回格子坐标。
     """
     from PIL import Image, ImageDraw
 
@@ -154,9 +179,9 @@ def render_editor_canvas(grid: np.ndarray, cell_px: int = 32):
 
 
 def cell_from_click(x: float, y: float, cell_px: int, rows: int, cols: int) -> Coordinate | None:
-    """Convert a click position on the editor canvas to a (row, col) cell.
+    """将画布点击坐标换算为 (row, col) 格子。
 
-    Returns None when the click falls outside the grid bounds.
+    点击落在网格外时返回 None。
     """
     col = int(x // cell_px)
     row = int(y // cell_px)

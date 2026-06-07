@@ -9,17 +9,19 @@
 
 1. [01_ACO_PROJECT_PLAN.md](./01_ACO_PROJECT_PLAN.md)
    - 项目目标、系统结构、算法设计、测试范围、当前局限
-2. [03_RUNBOOK.md](./03_RUNBOOK.md)
+2. [07_CODE_WALKTHROUGH.md](./07_CODE_WALKTHROUGH.md)
+   - 从代码角度讲解入口、数据模型、算法、界面、输出和测试
+3. [03_RUNBOOK.md](./03_RUNBOOK.md)
    - 环境配置、命令行运行、Streamlit 运行、测试与常见问题
-3. [04_EXPERIMENT_RESULTS.md](./04_EXPERIMENT_RESULTS.md)
+4. [04_EXPERIMENT_RESULTS.md](./04_EXPERIMENT_RESULTS.md)
    - 真实参数实验结果、图表和结论
-4. [05_COURSE_DESIGN_REPORT.md](./05_COURSE_DESIGN_REPORT.md)
+5. [05_COURSE_DESIGN_REPORT.md](./05_COURSE_DESIGN_REPORT.md)
    - 课程设计正文报告草稿，面向最终提交材料整理
-5. [06_DEFENSE_PPT_OUTLINE.md](./06_DEFENSE_PPT_OUTLINE.md)
+6. [06_DEFENSE_PPT_OUTLINE.md](./06_DEFENSE_PPT_OUTLINE.md)
    - 答辩 PPT 提纲、逐页内容和讲稿提示
-6. [00_REF_GA_PATH_PLANNING.md](./00_REF_GA_PATH_PLANNING.md)
+7. [00_REF_GA_PATH_PLANNING.md](./00_REF_GA_PATH_PLANNING.md)
    - 老师给的遗传算法参考项目分析，帮助理解“为什么本项目不直接照搬参考实现”
-7. [02_EXPERIMENT_LOG.md](./02_EXPERIMENT_LOG.md)
+8. [02_EXPERIMENT_LOG.md](./02_EXPERIMENT_LOG.md)
    - 后续扩展实验时可复用的记录模板
 
 ---
@@ -56,6 +58,10 @@
 - 答辩 PPT 制作提纲
 - 按 12 页给出页面标题、页面正文、建议配图和讲稿提示
 
+### `07_CODE_WALKTHROUGH.md`
+- 面向代码阅读和答辩技术细节追问的详细讲解文档
+- 从入口、模型、地图加载、网格规则、求解器、可视化、输出、Web、自定义地图、脚本和测试逐层解释项目
+
 ---
 
 ## 3. 当前项目状态概览
@@ -72,6 +78,7 @@
 - 真实实验文档
 - 课程设计正文报告草稿
 - 答辩 PPT 提纲
+- 代码视角详细讲解文档
 
 当前仍可继续补充的主要内容是：
 
@@ -90,3 +97,5 @@
 3. [../src/aco_path_planning/map_catalog.py](../src/aco_path_planning/map_catalog.py)
 4. [../scripts/summarize_results.py](../scripts/summarize_results.py)
 5. [../tests/test_map_catalog.py](../tests/test_map_catalog.py)
+
+如果希望按代码调用链完整阅读，优先参考 [07_CODE_WALKTHROUGH.md](./07_CODE_WALKTHROUGH.md)。

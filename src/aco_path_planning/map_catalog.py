@@ -1,10 +1,27 @@
 from __future__ import annotations
 
+"""示例地图元数据目录。
+
+地图 CSV 本身只记录格子数值，不适合直接展示给用户。本模块给每张精选地图补充
+展示名、类别、特点说明和预期可解性，主要供 Streamlit 界面和地图一致性测试使用。
+"""
+
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class MapMetadata:
+    """地图展示与验证信息。
+
+    字段说明：
+    - `display_name`：界面下拉框中的展示名。
+    - `category`：地图类别，用于排序和分组。
+    - `description`：地图特点说明。
+    - `expected_solvable`：预期是否存在可行路径。
+    - `start` / `goal`：期望起终点坐标，用于测试校验 CSV 是否被误改。
+    - `analysis_ready`：是否适合作为收敛分析代表图。
+    """
+
     display_name: str
     category: str
     description: str
@@ -14,6 +31,7 @@ class MapMetadata:
     analysis_ready: bool = False
 
 
+# 精选地图目录。key 必须与 data/maps/ 下的 CSV 文件名一致。
 MAP_CATALOG: dict[str, MapMetadata] = {
     "easy.csv": MapMetadata(
         display_name="easy / 基础可达图 A",
@@ -165,6 +183,7 @@ MAP_CATALOG: dict[str, MapMetadata] = {
     ),
 }
 
+# 地图在界面下拉框中的类别排序。没有出现在这里的类别会排到最后。
 MAP_CATEGORY_ORDER = [
     "easy",
     "medium",
@@ -182,7 +201,11 @@ CUSTOM_CATEGORY = "custom"
 
 
 def _fallback_metadata(file_name: str) -> MapMetadata:
-    """Metadata for maps not in the curated catalog (e.g. user-saved custom maps)."""
+    """为不在精选目录中的地图构造兜底元数据。
+
+    典型场景是前端保存的自定义地图。兜底后界面仍能展示和排序，不会因为缺元数据
+    抛出 `KeyError`。
+    """
     stem = file_name[:-4] if file_name.endswith(".csv") else file_name
     return MapMetadata(
         display_name=f"custom / {stem}",
@@ -195,6 +218,7 @@ def _fallback_metadata(file_name: str) -> MapMetadata:
 
 
 def get_map_metadata(file_name: str) -> MapMetadata:
+    """获取地图元数据；未知地图返回 custom 兜底信息。"""
     metadata = MAP_CATALOG.get(file_name)
     if metadata is None:
         return _fallback_metadata(file_name)
@@ -202,6 +226,10 @@ def get_map_metadata(file_name: str) -> MapMetadata:
 
 
 def get_sorted_map_files(file_names: list[str]) -> list[str]:
+    """按地图类别和展示名排序文件名列表。
+
+    已知类别按 `MAP_CATEGORY_ORDER` 排序，未知/自定义地图排在最后。
+    """
     category_rank = {name: index for index, name in enumerate(MAP_CATEGORY_ORDER)}
     return sorted(
         file_names,

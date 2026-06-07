@@ -145,6 +145,8 @@ python -m unittest discover -s tests
 - [实验记录模板](./docs/02_EXPERIMENT_LOG.md)
 - [项目技术计划与交接文档](./docs/01_ACO_PROJECT_PLAN.md)
 - [运行手册](./docs/03_RUNBOOK.md)
+- [代码视角项目详解](./docs/07_CODE_WALKTHROUGH.md)
+- [答辩 PPT 提纲](./docs/06_DEFENSE_PPT_OUTLINE.md)
 
 ## 参考说明
 `references/` 目录中的参考项目是基于遗传算法的固定节点图路径规划示例。本项目没有复用其算法代码，只参考了工程拆分和结果展示思路。

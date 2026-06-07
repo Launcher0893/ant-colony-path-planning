@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""命令行运行逻辑。
+
+本模块负责把命令行参数、默认 JSON 参数和地图文件组合起来，然后调用核心求解器。
+它不直接实现算法，只负责用户输入、结果打印、可选绘图和可选保存。
+"""
+
 import argparse
 import json
 import sys
@@ -16,6 +22,10 @@ from .visualization import format_path_coordinates, plot_convergence, plot_grid_
 
 
 def parse_args() -> argparse.Namespace:
+    """定义并解析 CLI 参数。
+
+    默认地图为 `data/maps/easy.csv`；默认参数文件为 `config/aco_defaults.json`。
+    """
     default_map = DEFAULT_MAP_DIR / "easy.csv"
 
     parser = argparse.ArgumentParser(
@@ -27,6 +37,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--iterations", type=int)
     parser.add_argument("--alpha", type=float)
     parser.add_argument("--beta", type=float)
+    # CLI 中使用短名 rho / q，对应模型字段 evaporation_rate / pheromone_deposit_q。
     parser.add_argument("--rho", dest="evaporation_rate", type=float)
     parser.add_argument("--q", dest="pheromone_deposit_q", type=float)
     parser.add_argument("--initial-pheromone", type=float)
@@ -57,6 +68,10 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    """CLI 主流程，返回进程退出码。
+
+    返回 0 表示正常完成；输入文件、参数文件或参数值有问题时返回 1。
+    """
     args = parse_args()
 
     try:
@@ -85,6 +100,7 @@ def main() -> int:
     print(f"Successful paths: {result.total_successful_paths}")
 
     if args.save_output:
+        # 保存完整实验产物，包含图片、路径文本和 result.json。
         saved_dir = save_planning_artifacts(
             grid_map=grid_map,
             params=params,
@@ -95,6 +111,7 @@ def main() -> int:
         print(f"Saved output: {saved_dir}")
 
     if not args.no_plot:
+        # 交互式运行时展示两张最常用图；更完整的四张图会在保存输出时生成。
         plot_grid_map(grid_map, result)
         plot_convergence(result.history_best_length)
         plt.show()
@@ -103,6 +120,13 @@ def main() -> int:
 
 
 def build_params(args: argparse.Namespace) -> AcoParams:
+    """根据默认参数文件和命令行覆盖项构造 `AcoParams`。
+
+    合并顺序：
+    1. 读取参数 JSON；文件不存在时使用 `AcoParams` 代码默认值。
+    2. 用命令行中非 None 的字段覆盖。
+    3. 如果传入 `--disable-elite`，强制关闭精英强化。
+    """
     base_params = _load_params_from_file(args.param_file)
     overrides = {
         "ant_count": getattr(args, "ant_count", None),
@@ -123,8 +147,13 @@ def build_params(args: argparse.Namespace) -> AcoParams:
 
 
 def _load_params_from_file(path: str | Path) -> dict[str, int | float | None]:
+    """读取参数 JSON，并只保留 `AcoParams` 已知字段。
+
+    这样配置文件中即使出现额外字段，也不会直接传入 dataclass 构造函数导致异常。
+    """
     param_path = Path(path)
     if not param_path.exists():
+        # 没有参数文件时允许程序继续运行，使用模型内置默认值。
         return AcoParams().__dict__.copy()
 
     with param_path.open("r", encoding="utf-8") as handle:

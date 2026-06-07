@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+"""Streamlit 图形界面。
+
+本模块负责页面渲染和用户交互：选择地图、配置参数、运行求解器、展示结果、
+保存输出，以及提供自定义地图编辑器。核心算法仍然只由 `solver.solve_path`
+完成，界面层不直接实现路径规划逻辑。
+"""
+
 from pathlib import Path
 
 import streamlit as st
@@ -44,20 +51,18 @@ except ImportError:  # pragma: no cover - depends on optional dependency
 
 
 def _patch_image_to_url() -> bool:
-    """Make ``image_to_url`` callable the way streamlit-drawable-canvas 0.9.3 expects.
+    """适配 streamlit-drawable-canvas 0.9.3 对 `image_to_url` 的旧调用方式。
 
-    Streamlit 1.50 changed ``image_to_url`` in two ways that break the
-    (unmaintained) canvas component:
+    Streamlit 1.50 对 `image_to_url` 做了两处会破坏旧绘图组件的改动：
 
-    1. It moved from ``streamlit.elements.image`` to
-       ``streamlit.elements.lib.image_utils``.
-    2. Its second parameter changed from ``width: int`` to
-       ``layout_config: LayoutConfig``.
+    1. 函数位置从 `streamlit.elements.image` 移到
+       `streamlit.elements.lib.image_utils`。
+    2. 第二个参数从 `width: int` 改成了 `layout_config: LayoutConfig`。
 
-    The component still imports it from the old location and calls it with an
-    int width. We install a small shim onto the old module location that adapts
-    the int-width call to the new ``LayoutConfig`` signature, then forwards to
-    the real function. Returns True when a usable ``image_to_url`` is in place.
+    旧组件仍会从旧位置导入并传入整数宽度。这里把一个兼容垫片挂回旧模块位置，
+    把整数宽度包装成 `LayoutConfig` 后再转调新版函数。
+
+    返回 True 表示当前运行环境已经具备可用的 `image_to_url`。
     """
     try:
         import streamlit.elements.image as st_image_module
@@ -68,13 +73,11 @@ def _patch_image_to_url() -> bool:
         from streamlit.elements.lib.image_utils import image_to_url as new_image_to_url
         from streamlit.elements.lib.layout_utils import LayoutConfig
     except ImportError:  # pragma: no cover - older streamlit layout
-        # Older Streamlit keeps the old-signature function at the old location;
-        # if it is there the component works natively, so nothing to patch.
+        # 旧版 Streamlit 原本就在旧位置提供旧签名函数；如果存在，就不需要垫片。
         return hasattr(st_image_module, "image_to_url")
 
     def image_to_url_compat(image, width, clamp, channels, output_format, image_id):
-        # The canvas component passes an int width; the new function wants a
-        # LayoutConfig. Wrap ints, pass anything else through untouched.
+        # 绘图组件传入 int 宽度；新版函数需要 LayoutConfig。非 int 参数原样转发。
         layout_config = LayoutConfig(width=width) if isinstance(width, int) else width
         return new_image_to_url(image, layout_config, clamp, channels, output_format, image_id)
 
@@ -92,28 +95,36 @@ try:
 except Exception:  # pragma: no cover - depends on optional dependency
     _HAS_DRAWABLE_CANVAS = False
 
+# 前端中文画笔标签到内部英文画笔常量的映射。
 _BRUSH_BY_LABEL = {
     "障碍": BRUSH_OBSTACLE,
     "起点": BRUSH_START,
     "终点": BRUSH_GOAL,
     "擦除": BRUSH_ERASE,
 }
-# Stroke colors only affect the temporary drag overlay; the grid itself is
-# recolored by the brush after rasterization, so these are just for visibility.
+# 拖动画布上的 stroke 颜色只影响临时覆盖层；真正的网格颜色会在栅格化后重新渲染。
 _BRUSH_STROKE_COLORS = {
     BRUSH_OBSTACLE: "#30343f",
     BRUSH_START: "#1f77b4",
     BRUSH_GOAL: "#d62728",
     BRUSH_ERASE: "#f59e0b",
 }
+# 编辑器画布最大像素尺寸，用于根据地图行列数自动计算单格大小。
 _EDITOR_MAX_CANVAS_PX = 560
 
 
 def _should_use_drag_canvas(has_drawable_canvas: bool, drag_disabled: bool) -> bool:
+    """判断当前是否应使用拖动画布模式。
+
+    参数：
+    - `has_drawable_canvas`：依赖组件是否成功导入并完成兼容适配。
+    - `drag_disabled`：当前会话是否因运行期异常禁用了拖动画布。
+    """
     return has_drawable_canvas and not drag_disabled
 
 
 def main() -> None:
+    """Streamlit 页面主函数。"""
     defaults = _load_defaults()
 
     st.set_page_config(page_title="ACO Path Planning", layout="wide")
@@ -122,6 +133,7 @@ def main() -> None:
 
     with st.sidebar:
         st.header("地图来源")
+        # 两种来源共享同一套求解器：示例地图来自 CSV，自定义地图来自前端内存网格。
         map_source = st.radio(
             "选择地图来源",
             ("示例地图", "自定义地图"),
@@ -132,6 +144,7 @@ def main() -> None:
         if map_source == "示例地图":
             map_files = discover_map_files(DEFAULT_MAP_DIR)
             if map_files:
+                # 先按元数据排序，再用展示名渲染下拉框；真实值仍保留文件名。
                 sorted_file_names = get_sorted_map_files([path.name for path in map_files])
                 path_by_name = {path.name: path for path in map_files}
                 selected_map_name = st.selectbox(
@@ -163,6 +176,11 @@ def main() -> None:
 
 
 def _render_sidebar_params(defaults: AcoParams) -> AcoParams:
+    """渲染侧边栏参数控件，并组装成 `AcoParams`。
+
+    `defaults` 来自配置文件或模型默认值。这里的控件约束只是第一层用户体验限制，
+    真正的最终校验仍由 `AcoParams.validate()` 在求解器入口完成。
+    """
     ant_count = st.number_input(
         "蚂蚁数量",
         min_value=1,
@@ -271,6 +289,11 @@ def _run_example_mode(
     save_output: bool,
     run_clicked: bool,
 ) -> None:
+    """运行“示例地图”模式。
+
+    示例地图来自 `data/maps/` 下的 CSV 文件。这里负责展示地图元数据和预览图，
+    真正点击运行后仍然调用统一的 `solve_path()`。
+    """
     grid_map = load_grid_map(selected_map_path)
     metadata = get_map_metadata(selected_map_path.name)
 
@@ -304,6 +327,7 @@ def _run_example_mode(
         st.info("调整参数后点击“开始规划”执行路径搜索。")
         return
 
+    # 用户点击开始规划后，才执行可能较耗时的求解过程。
     result = solve_path(grid_map, params)
     _render_results(grid_map, params, result, save_output)
 
@@ -315,11 +339,11 @@ def _render_drag_canvas(
     cell_px: int,
     brush: str,
 ) -> None:
-    """Drag-to-paint canvas: strokes are rasterized to cells on mouse release.
+    """拖动绘制模式：鼠标松开后将笔画栅格化为地图格子。
 
-    The painted grid is drawn as the canvas background; the user's freedraw
-    strokes sit on top and are returned by the component only as the stroke
-    layer (no background), which we rasterize into touched cells.
+    已绘制的地图作为 canvas 背景图；用户新画的 freedraw 笔画在背景上方。
+    组件返回的 `image_data` 只包含新笔画图层，不包含背景，因此需要按 alpha 通道
+    判断本次笔画经过了哪些格子。
     """
     st.caption(
         "按住鼠标拖动绘制：蓝色=起点，红色=终点，深色=障碍，橙色=擦除。"
@@ -328,8 +352,7 @@ def _render_drag_canvas(
 
     background = render_editor_canvas(grid, cell_px=cell_px)
     canvas_version = st.session_state.get("editor_canvas_version", 0)
-    # A fresh key per applied stroke clears the overlay so the next stroke starts
-    # from a blank layer and is not re-counted on the following rerun.
+    # 每次应用笔画后换一个 key，迫使组件清空上一笔 overlay，避免下次 rerun 重复计数。
     canvas_key = f"editor_drawable_{grid_rows}x{grid_cols}_{cell_px}_{canvas_version}"
 
     result = st_canvas(
@@ -351,6 +374,7 @@ def _render_drag_canvas(
     if not touched:
         return
 
+    # 把本次笔画影响的格子写回编辑器状态，并清除已保存路径标记。
     apply_brush_to_cells(grid, touched, brush)
     st.session_state["editor_grid"] = grid
     st.session_state["editor_saved_path"] = None
@@ -365,7 +389,11 @@ def _render_click_canvas(
     cell_px: int,
     brush: str,
 ) -> None:
-    """Fallback single-click canvas used when the drag component is unavailable."""
+    """点击绘制模式。
+
+    这是拖动画布不可用或运行期失败时的降级方案。每次点击只修改一个格子，体验比
+    拖动模式慢，但不影响核心功能。
+    """
     st.caption("点击格子绘制：蓝色=起点，红色=终点，深色=障碍，浅色=空地。起点与终点全图唯一。")
 
     canvas_image = render_editor_canvas(grid, cell_px=cell_px)
@@ -373,6 +401,7 @@ def _render_click_canvas(
 
     if coords is not None:
         click = (coords["x"], coords["y"])
+        # Streamlit rerun 可能反复返回同一次点击坐标，这里去重避免重复触发。
         if st.session_state.get("editor_last_click") != click:
             st.session_state["editor_last_click"] = click
             cell = cell_from_click(coords["x"], coords["y"], cell_px, grid_rows, grid_cols)
@@ -384,6 +413,11 @@ def _render_click_canvas(
 
 
 def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) -> None:
+    """运行“自定义地图”模式。
+
+    自定义地图保存在 `st.session_state["editor_grid"]` 中。页面层只管理交互状态，
+    保存和校验逻辑交给 `custom_map.py`。
+    """
     st.subheader("自定义地图编辑器")
     if not (_HAS_DRAWABLE_CANVAS or _HAS_IMAGE_COORDS):
         st.error(
@@ -403,6 +437,7 @@ def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) ->
         create_clicked = st.button("创建 / 重置画布")
 
     if create_clicked or "editor_grid" not in st.session_state:
+        # 初始化或重置编辑器状态。默认地图左上为起点、右下为终点。
         st.session_state["editor_grid"] = create_empty_grid(int(rows), int(cols))
         st.session_state["editor_last_click"] = None
         st.session_state["editor_saved_path"] = None
@@ -419,11 +454,12 @@ def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) ->
     )
     brush = _BRUSH_BY_LABEL[brush_label]
 
-    # Reset click dedup when the brush changes so the same cell can be re-painted.
+    # 切换画笔时重置点击去重，这样同一格可以被新画笔重新涂色。
     if st.session_state.get("editor_prev_brush") != brush_label:
         st.session_state["editor_prev_brush"] = brush_label
         st.session_state["editor_last_click"] = None
 
+    # 根据行列数自适应单格像素，保证大地图不会撑爆页面宽度。
     cell_px = max(10, min(30, _EDITOR_MAX_CANVAS_PX // max(grid_rows, grid_cols)))
 
     use_drag_canvas = _should_use_drag_canvas(
@@ -434,6 +470,7 @@ def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) ->
         try:
             _render_drag_canvas(grid, grid_rows, grid_cols, cell_px, brush)
         except Exception as exc:  # pragma: no cover - depends on component runtime
+            # 组件运行期失败后，本会话禁用拖动画布，避免每次 rerun 都再次触发异常。
             st.session_state["editor_disable_drag_canvas"] = True
             if not _HAS_IMAGE_COORDS:
                 st.error(f"拖动画布组件运行失败，且点击版组件不可用：{exc}")
@@ -464,6 +501,7 @@ def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) ->
         if not ready:
             st.error("地图尚未就绪，无法保存。")
         else:
+            # 保存前先根据当前目录生成不冲突的最终文件名，再由 save_custom_map 做安全校验。
             existing = [path.name for path in discover_map_files(DEFAULT_MAP_DIR)]
             file_name = resolve_map_filename(map_name, existing)
             saved_path = save_custom_map(grid, file_name, DEFAULT_MAP_DIR)
@@ -480,6 +518,7 @@ def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) ->
         return
 
     saved_path = st.session_state.get("editor_saved_path")
+    # 如果用户已保存地图，则 source 使用保存路径；未保存时 source 为 None。
     grid_map = build_grid_map_from_array(grid, source=saved_path)
     result = solve_path(grid_map, params)
     _render_results(grid_map, params, result, save_output)
@@ -491,6 +530,7 @@ def _render_results(
     result,
     save_output: bool,
 ) -> None:
+    """展示求解结果，并按需保存输出产物。"""
     metric_col_1, metric_col_2, metric_col_3 = st.columns(3)
     metric_col_1.metric("是否找到路径", "是" if result.found else "否")
     metric_col_2.metric(
@@ -506,6 +546,7 @@ def _render_results(
     st.write(result.message)
 
     if save_output:
+        # Streamlit 运行结果统一保存到 data/outputs/streamlit/。
         saved_dir = save_planning_artifacts(
             grid_map=grid_map,
             params=params,
@@ -541,6 +582,10 @@ def _render_results(
 
 
 def _load_defaults() -> AcoParams:
+    """读取默认参数文件并构造 `AcoParams`。
+
+    复用 CLI 的参数文件读取函数，保证 CLI 和 Streamlit 默认参数来源一致。
+    """
     from .cli import _load_params_from_file
 
     defaults = _load_params_from_file(DEFAULT_PARAM_FILE)
