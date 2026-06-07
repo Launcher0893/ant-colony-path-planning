@@ -15,9 +15,11 @@
    - 真实参数实验结果、图表和结论
 4. [05_COURSE_DESIGN_REPORT.md](./05_COURSE_DESIGN_REPORT.md)
    - 课程设计正文报告草稿，面向最终提交材料整理
-5. [00_REF_GA_PATH_PLANNING.md](./00_REF_GA_PATH_PLANNING.md)
+5. [06_DEFENSE_PPT_OUTLINE.md](./06_DEFENSE_PPT_OUTLINE.md)
+   - 答辩 PPT 提纲、逐页内容和讲稿提示
+6. [00_REF_GA_PATH_PLANNING.md](./00_REF_GA_PATH_PLANNING.md)
    - 老师给的遗传算法参考项目分析，帮助理解“为什么本项目不直接照搬参考实现”
-6. [02_EXPERIMENT_LOG.md](./02_EXPERIMENT_LOG.md)
+7. [02_EXPERIMENT_LOG.md](./02_EXPERIMENT_LOG.md)
    - 后续扩展实验时可复用的记录模板
 
 ---
@@ -50,6 +52,10 @@
 - 当前课程设计正文报告草稿
 - 汇总需求分析、系统设计、算法实现、实验结果、总结与附录
 
+### `06_DEFENSE_PPT_OUTLINE.md`
+- 答辩 PPT 制作提纲
+- 按 12 页给出页面标题、页面正文、建议配图和讲稿提示
+
 ---
 
 ## 3. 当前项目状态概览
@@ -65,12 +71,12 @@
 - 实验结果输出与汇总
 - 真实实验文档
 - 课程设计正文报告草稿
+- 答辩 PPT 提纲
 
 当前仍可继续补充的主要内容是：
 
 - 按学校模板进一步排版课程设计报告
 - 补入实际运行截图和算法流程图资源
-- 答辩提纲
 - 更多对照实验与更细测试
 
 ---
