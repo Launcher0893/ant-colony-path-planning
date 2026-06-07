@@ -349,6 +349,7 @@ def _render_drag_canvas(
 
     apply_brush_to_cells(grid, touched, brush)
     st.session_state["editor_grid"] = grid
+    st.session_state["editor_saved_path"] = None
     st.session_state["editor_canvas_version"] = canvas_version + 1
     st.rerun()
 
@@ -374,6 +375,7 @@ def _render_click_canvas(
             if cell is not None:
                 apply_brush(grid, cell[0], cell[1], brush)
                 st.session_state["editor_grid"] = grid
+                st.session_state["editor_saved_path"] = None
                 st.rerun()
 
 
@@ -399,6 +401,7 @@ def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) ->
     if create_clicked or "editor_grid" not in st.session_state:
         st.session_state["editor_grid"] = create_empty_grid(int(rows), int(cols))
         st.session_state["editor_last_click"] = None
+        st.session_state["editor_saved_path"] = None
         st.session_state["editor_canvas_version"] = st.session_state.get("editor_canvas_version", 0) + 1
 
     grid = st.session_state["editor_grid"]
@@ -448,6 +451,7 @@ def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) ->
             existing = [path.name for path in discover_map_files(DEFAULT_MAP_DIR)]
             file_name = resolve_map_filename(map_name, existing)
             saved_path = save_custom_map(grid, file_name, DEFAULT_MAP_DIR)
+            st.session_state["editor_saved_path"] = saved_path
             st.success(
                 f"地图已保存：`{saved_path.name}`，可在“示例地图”来源中选择复用。"
             )
@@ -459,7 +463,8 @@ def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) ->
         st.error("地图尚未就绪（需要恰好一个起点和一个终点），无法规划。")
         return
 
-    grid_map = build_grid_map_from_array(grid)
+    saved_path = st.session_state.get("editor_saved_path")
+    grid_map = build_grid_map_from_array(grid, source=saved_path)
     result = solve_path(grid_map, params)
     _render_results(grid_map, params, result, save_output)
 

@@ -169,7 +169,16 @@ def is_ready_to_save(grid: np.ndarray) -> bool:
 
 def build_grid_map_from_array(grid: np.ndarray, source: Path | None = None) -> GridMap:
     """Build a validated GridMap from an in-memory editor grid."""
-    raw_grid = np.asarray(grid, dtype=np.int8)
+    raw_grid = np.asarray(grid)
+    if raw_grid.ndim != 2 or raw_grid.size == 0:
+        raise ValueError("Map must be a non-empty 2D grid.")
+    if not np.issubdtype(raw_grid.dtype, np.integer):
+        raise ValueError("Map grid values must be integers.")
+    invalid_values = set(np.unique(raw_grid).tolist()) - {EMPTY, OBSTACLE, START, GOAL}
+    if invalid_values:
+        sample = sorted(invalid_values)[0]
+        raise ValueError(f"Unsupported cell value {sample}. Allowed values: 0, 1, 2, 3.")
+    raw_grid = raw_grid.astype(np.int8, copy=True)
     return build_grid_map_from_cells(raw_grid, source=source)
 
 
@@ -197,6 +206,16 @@ def generate_custom_map_name(
     return candidate
 
 
+def _resolve_unique_stem(stem: str, existing_names: list[str]) -> str:
+    existing_stems = {Path(name).stem.lower() for name in existing_names}
+    candidate = stem
+    sequence = 1
+    while candidate.lower() in existing_stems:
+        candidate = f"{stem}_{sequence}"
+        sequence += 1
+    return candidate
+
+
 def resolve_map_filename(
     user_name: str,
     existing_names: list[str],
@@ -204,7 +223,24 @@ def resolve_map_filename(
 ) -> str:
     """Decide the final ``<name>.csv`` filename from optional user input."""
     cleaned = sanitize_map_name(user_name) if user_name else ""
-    stem = cleaned or generate_custom_map_name(existing_names, now=now)
+    stem = _resolve_unique_stem(cleaned, existing_names) if cleaned else generate_custom_map_name(existing_names, now=now)
+    return f"{stem}.csv"
+
+
+def _safe_csv_filename(file_name: str) -> str:
+    raw_name = file_name.strip()
+    if not raw_name:
+        raise ValueError("Map file name must not be empty.")
+
+    candidate = Path(raw_name)
+    if candidate.is_absolute() or candidate.name != raw_name:
+        raise ValueError("Map file name must not include a path.")
+    if candidate.suffix and candidate.suffix != ".csv":
+        raise ValueError("Map file name must use the .csv extension.")
+
+    stem = candidate.stem if candidate.suffix else candidate.name
+    if not stem or sanitize_map_name(stem) != stem:
+        raise ValueError("Map file name contains unsafe characters.")
     return f"{stem}.csv"
 
 
@@ -223,10 +259,10 @@ def save_custom_map(
     target_dir = Path(directory)
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    safe_name = file_name if file_name.endswith(".csv") else f"{file_name}.csv"
+    safe_name = _safe_csv_filename(file_name)
     output_path = target_dir / safe_name
 
-    with output_path.open("w", encoding="utf-8", newline="") as handle:
+    with output_path.open("x", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
         writer.writerows(np.asarray(grid, dtype=int).tolist())
 

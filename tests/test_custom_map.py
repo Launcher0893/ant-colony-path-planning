@@ -120,6 +120,10 @@ class NamingTests(unittest.TestCase):
     def test_resolve_uses_user_name_when_given(self) -> None:
         self.assertEqual(resolve_map_filename("My Arena", [], now=datetime(2026, 6, 5)), "My_Arena.csv")
 
+    def test_resolve_appends_suffix_for_existing_user_name(self) -> None:
+        existing = ["easy.csv", "easy_1.csv"]
+        self.assertEqual(resolve_map_filename("easy", existing), "easy_2.csv")
+
     def test_resolve_falls_back_to_generated_name(self) -> None:
         now = datetime(2026, 6, 5, 12, 30, 0)
         self.assertEqual(resolve_map_filename("", [], now=now), "custom_20260605_123000_1.csv")
@@ -139,6 +143,21 @@ class BuildAndSaveTests(unittest.TestCase):
         grid = create_empty_grid(4, 4)
         apply_brush(grid, 3, 3, BRUSH_ERASE)  # remove the goal
         with self.assertRaisesRegex(ValueError, "exactly one goal"):
+            build_grid_map_from_array(grid)
+
+    def test_build_grid_map_rejects_float_values(self) -> None:
+        grid = np.array([[2.0, 0.0], [0.0, 3.0]])
+        with self.assertRaisesRegex(ValueError, "integers"):
+            build_grid_map_from_array(grid)
+
+    def test_build_grid_map_rejects_string_values(self) -> None:
+        grid = np.array([["2", "0"], ["0", "3"]])
+        with self.assertRaisesRegex(ValueError, "integers"):
+            build_grid_map_from_array(grid)
+
+    def test_build_grid_map_rejects_values_before_int8_truncation(self) -> None:
+        grid = np.array([[2, 0], [0, 259]], dtype=np.int64)
+        with self.assertRaisesRegex(ValueError, "Unsupported cell value 259"):
             build_grid_map_from_array(grid)
 
     def test_save_custom_map_round_trips_through_loader(self) -> None:
@@ -170,6 +189,25 @@ class BuildAndSaveTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             saved_path = save_custom_map(grid, "no_ext", temp_dir)
             self.assertEqual(saved_path.suffix, ".csv")
+
+    def test_save_custom_map_refuses_path_components(self) -> None:
+        grid = create_empty_grid(3, 3)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertRaisesRegex(ValueError, "must not include a path"):
+                save_custom_map(grid, "../escape", temp_dir)
+
+    def test_save_custom_map_refuses_unsafe_direct_name(self) -> None:
+        grid = create_empty_grid(3, 3)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertRaisesRegex(ValueError, "unsafe"):
+                save_custom_map(grid, "my map", temp_dir)
+
+    def test_save_custom_map_does_not_overwrite_existing_file(self) -> None:
+        grid = create_empty_grid(3, 3)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            save_custom_map(grid, "duplicate", temp_dir)
+            with self.assertRaises(FileExistsError):
+                save_custom_map(grid, "duplicate", temp_dir)
 
 
 class StrokeRasterizationTests(unittest.TestCase):
