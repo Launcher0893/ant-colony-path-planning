@@ -22,22 +22,31 @@ ant-colony-path-planning/
 ├── data/                    # 地图、样例数据、后续实验输出数据
 │   ├── maps/
 │   │   ├── easy.csv
+│   │   ├── easy_alt.csv
 │   │   ├── medium.csv
-│   │   └── blocked.csv
+│   │   ├── medium_alt.csv
+│   │   ├── large_sparse.csv / large_sparse_alt.csv
+│   │   ├── large_dense.csv / large_dense_alt.csv
+│   │   ├── no_solution_large.csv / no_solution_large_alt.csv
+│   │   └── generated/
 │   └── outputs/
 │       ├── cli/
-│       └── streamlit/
+│       ├── streamlit/
+│       └── summary.csv
 ├── docs/                    # 技术文档、参考分析、开发计划、实验记录
 │   ├── 00_REF_GA_PATH_PLANNING.md
 │   ├── 01_ACO_PROJECT_PLAN.md
 │   ├── 02_EXPERIMENT_LOG.md
 │   ├── 03_RUNBOOK.md
-│   └── 04_EXPERIMENT_RESULTS.md
+│   ├── 04_EXPERIMENT_RESULTS.md
+│   ├── 05_COURSE_DESIGN_REPORT.md
+│   └── README.md
 ├── references/              # 老师给的参考项目，保留原样，不作为主实现目录
 ├── scripts/                 # 可直接运行的脚本入口
+│   ├── generate_maps.py
 │   ├── run_cli.py
 │   ├── run_streamlit.py
-│   └── generate_maps.py
+│   └── summarize_results.py
 ├── src/                     # 主源码目录
 │   └── aco_path_planning/
 │       ├── __init__.py
@@ -107,7 +116,7 @@ ant-colony-path-planning/
 - 已支持 CLI 运行和 Streamlit 界面运行。
 - 已支持地图选择、蚂蚁数量、迭代次数、`alpha / beta / rho / Q / 初始信息素 / 随机种子` 参数设置。
 - 已显示最终路径、路径长度、最优轮次、路径坐标、运行耗时、收敛曲线。
-- 已支持显式保存运行结果到 `data/outputs/`。
+- 已支持显式保存运行结果到 `data/outputs/`，输出目录带微秒时间戳，避免重复运行覆盖；结构化结果保持标准 JSON。
 - 已提供分级手工地图集和地图生成脚本。
 - 已支持局部信息素更新与精英强化。
 - 已支持成功路径数量统计与结果汇总。
@@ -121,7 +130,8 @@ ant-colony-path-planning/
 - 已在 Streamlit 增加「自定义地图」来源，可在前端先设置地图尺寸，再用画布绘制地图。
 - 自定义地图编辑器支持鼠标按住拖动连续上色，松开后将笔画栅格化为经过的格子并按当前画笔着色。
 - 提供障碍 / 起点 / 终点 / 擦除四种画笔，起点与终点保持全图唯一（多格笔画自动收敛为单个代表格）。
-- 自定义地图可选保存为 CSV，保存后可在「示例地图」来源中直接复用。
+- 自定义地图可选保存为 CSV，保存后可在「示例地图」来源中直接复用；同名保存会自动追加序号，避免覆盖已有地图。
+- 自定义地图保存后继续规划时，结果元数据会追踪到已保存的 CSV 路径。
 
 未完全完成或后续可加强：
 
@@ -462,16 +472,20 @@ tau = (1 - local_rho) * tau + local_rho * tau0
 - 每轮成功路径数曲线绘制
 - 路径坐标格式化
 
-### 7.6.1 `src/aco_path_planning/output_writer.py`
+### 7.7 `src/aco_path_planning/output_writer.py`
 
 负责实验输出持久化：
 
 - 保存路径图
 - 保存收敛曲线图
+- 保存本轮最优 / 本轮平均长度图
+- 保存每轮成功路径数图
 - 保存路径文本
 - 保存结构化 `result.json`
+- 保证无解结果中的无穷大指标写成标准 JSON 的 `null`
+- 使用唯一输出目录，避免同秒保存同一地图时混写产物
 
-### 7.7 `src/aco_path_planning/cli.py`
+### 7.8 `src/aco_path_planning/cli.py`
 
 负责命令行模式：
 
@@ -484,7 +498,7 @@ tau = (1 - local_rho) * tau + local_rho * tau0
 - 显式触发输出保存
 - 控制是否弹出图形窗口
 
-### 7.8 `src/aco_path_planning/webapp.py`
+### 7.9 `src/aco_path_planning/webapp.py`
 
 负责 Streamlit 页面：
 
@@ -510,9 +524,9 @@ tau = (1 - local_rho) * tau + local_rho * tau0
   且第二个参数由 `width: int` 改成了 `layout_config: LayoutConfig`。垫片把组件的
   int 宽度包装成 `LayoutConfig` 后转调新函数，并挂回旧模块位置。
 - 兼容垫片或组件任一不可用时，自动回退到基于 `streamlit-image-coordinates` 的
-  逐格点击编辑器，页面不崩。
+  逐格点击编辑器；拖动画布运行期调用失败时，也会在当前会话中禁用拖动画布并回退到点击版，页面不崩。
 
-### 7.8.1 `src/aco_path_planning/map_catalog.py`
+### 7.9.1 `src/aco_path_planning/map_catalog.py`
 
 负责地图元数据：
 
@@ -525,7 +539,7 @@ tau = (1 - local_rho) * tau + local_rho * tau0
 对不在精选目录内的地图（例如前端保存的自定义地图）返回兜底元数据，
 类别标为 `custom`，排序排到最后，避免 `KeyError`。
 
-### 7.8.2 `src/aco_path_planning/custom_map.py`
+### 7.9.2 `src/aco_path_planning/custom_map.py`
 
 负责自定义地图编辑器的纯逻辑（不依赖 Streamlit，可单测）：
 
@@ -536,18 +550,18 @@ tau = (1 - local_rho) * tau + local_rho * tau0
 - `count_markers` / `is_ready_to_save`：校验是否恰好一个起点和一个终点
 - `build_grid_map_from_array`：从内存网格构造 `GridMap`（复用加载器校验）
 - `sanitize_map_name` / `generate_custom_map_name` / `resolve_map_filename`：
-  地图命名，留空则按 `custom_<时间戳>_<序号>` 生成
-- `save_custom_map`：校验后写出 CSV 到 `data/maps/`
+  地图命名，留空则按 `custom_<时间戳>_<序号>` 生成；显式命名遇到同名文件会追加序号
+- `save_custom_map`：校验后写出 CSV 到 `data/maps/`，拒绝路径逃逸与不安全文件名，并避免静默覆盖
 
-### 7.9 `scripts/summarize_results.py`
+### 7.10 `scripts/summarize_results.py`
 
 负责对 `data/outputs/` 下的实验结果做汇总：
 
 - 扫描所有 `result.json`
 - 生成 `summary.csv`
-- 汇总关键指标，便于实验对比和报告整理
+- 汇总关键指标和主要 ACO 参数，便于实验对比、配置复现和报告整理
 
-### 7.9 `scripts/`
+### 7.11 `scripts/`
 
 存在原因：
 
@@ -558,9 +572,10 @@ tau = (1 - local_rho) * tau + local_rho * tau0
 
 - `scripts/run_cli.py`
 - `scripts/run_streamlit.py`
-- `scripts/generate_maps.py`
+- `scripts/generate_maps.py`：生成地图时要求尺寸至少 `2 x 2`，并清洗输出名称，避免写出生成目录外
+- `scripts/summarize_results.py`：从实验输出目录汇总 `summary.csv`
 
-### 7.10 根入口兼容层
+### 7.12 根入口兼容层
 
 当前保留：
 
@@ -698,6 +713,7 @@ streamlit run scripts/run_streamlit.py
 - `tests/test_summarize_results.py`
 - `tests/test_visualization.py`
 - `tests/test_custom_map.py`
+- `tests/test_webapp.py`
 
 ### 10.2 已覆盖内容
 
@@ -726,6 +742,7 @@ streamlit run scripts/run_streamlit.py
 `test_params.py`
 
 - 参数非法值校验
+- 参数非有限值与错误类型校验
 
 `test_cli.py`
 
@@ -734,16 +751,21 @@ streamlit run scripts/run_streamlit.py
 `test_outputs.py`
 
 - 结果输出目录与产物文件生成
+- 输出目录唯一性
+- 无解结果保存为标准 JSON
 - 收敛相关历史曲线字段输出
 
 `test_generate_maps.py`
 
 - 地图生成脚本输出合法矩形地图
 - 保证只生成一个起点和一个终点
+- 拒绝过小尺寸
+- 清洗输出名称，避免路径逃逸
 
 `test_summarize_results.py`
 
 - 汇总脚本能从 `result.json` 生成 `summary.csv`
+- 汇总结果包含主要 ACO 参数字段
 
 `test_map_catalog.py`
 
@@ -755,7 +777,6 @@ streamlit run scripts/run_streamlit.py
 `test_visualization.py`
 
 - 多种收敛图函数都能正常生成 figure
-- 编辑器画布渲染与点击坐标到格子的换算
 
 `test_custom_map.py`
 
@@ -764,15 +785,22 @@ streamlit run scripts/run_streamlit.py
 - 起终点数量校验与就绪判断
 - 地图命名清洗、时间戳序号自动命名
 - 内存网格建图与 CSV 保存、回读一致
+- 内存网格严格校验整数类型和值域，防止截断后绕过校验
+- 自定义地图保存时同名自动改名，直接保存入口拒绝路径逃逸与不安全文件名
 - 笔画 alpha 掩码栅格化为经过的格子集合
 - 多格起终点笔画收敛为单个代表格
+
+`test_webapp.py`
+
+- 自定义地图拖动画布可用性与回退选择逻辑
 
 ### 10.3 当前测试不足
 
 还缺少：
 
 - 路径坐标合法性更细粒度检查
-- Streamlit 保存逻辑的更细粒度测试
+- 编辑器画布渲染与点击坐标到格子换算的更细测试
+- Streamlit 页面级保存流程的更细粒度测试
 - 第三阶段参数组合的更系统化实验测试
 
 这些都适合后续继续补。
@@ -806,7 +834,8 @@ streamlit run scripts/run_streamlit.py
 21. 完成地图元数据与特点说明展示。
 22. 完成 Streamlit 自定义地图编辑器：先设尺寸，再用鼠标拖动在方格画布上绘制障碍、起点、终点和擦除，松手后将笔画栅格化为经过的格子并着色，起点终点保持全图唯一。
 23. 完成自定义地图保存为 CSV：可命名，留空则按 `custom_<时间戳>_<序号>` 自动命名，存入 `data/maps/` 后可在示例地图来源中复用。
-24. 完成 `streamlit-drawable-canvas` 与 Streamlit 1.50 的兼容适配（`image_to_url` 签名垫片），并在组件不可用时自动回退到点击版编辑器。
+24. 完成 `streamlit-drawable-canvas` 与 Streamlit 1.50 的兼容适配（`image_to_url` 签名垫片），并在组件不可用或运行期失败时自动回退到点击版编辑器。
+25. 完成输出与输入安全加固：实验结果保持标准 JSON、自定义地图避免覆盖与路径逃逸、生成地图拒绝过小尺寸、参数与路径长度增加边界校验。
 
 ---
 
@@ -828,14 +857,14 @@ streamlit run scripts/run_streamlit.py
 
 - 未做日志系统。
 - 未做批量实验脚本。
-- 未做更正式的配置 schema 校验。
-- 自定义地图的拖动画布依赖 `streamlit-drawable-canvas 0.9.3`，该组件已停更，且依赖 Streamlit 内部函数 `image_to_url`。当前已用签名垫片适配 Streamlit 1.50；若后续 Streamlit 再次改动该内部函数，垫片可能失效，届时会自动回退到点击版编辑器（功能不丢，仅手感退化）。
+- 未做更正式的配置 schema 校验；当前 `AcoParams.validate()` 已覆盖范围、非有限值和关键类型，但仍不是独立 schema 系统。
+- 自定义地图的拖动画布依赖 `streamlit-drawable-canvas 0.9.3`，该组件已停更，且依赖 Streamlit 内部函数 `image_to_url`。当前已用签名垫片适配 Streamlit 1.50；若后续 Streamlit 再次改动该内部函数或运行期调用失败，会自动回退到点击版编辑器（功能不丢，仅手感退化）。
 
 ### 12.3 课设交付层局限
 
 - 还没有整理算法流程图。
 - 还没有固定一组用于答辩演示的参数模板。
-- 课程设计正文报告尚未从现有技术文档中重新组织成学校格式。
+- 课程设计正文报告已经建立，但还需要按学校模板进一步排版，并补入实际截图、流程图和答辩材料。
 
 ---
 
@@ -848,17 +877,17 @@ streamlit run scripts/run_streamlit.py
 1. 增加路径坐标合法性的更细测试。
 2. 增加 Streamlit 保存逻辑的更细测试。
 3. 补充 README 中的 PyCharm / VS Code 操作截图或说明。
-4. 用 `summary.csv` 建立更正式的实验对比表。
+4. 基于新版 `summary.csv` 继续扩展更正式的实验对比表。
 5. 对重新分布起终点后的地图集补充截图留档。
 6. 对多曲线收敛图做一组截图和解释说明。
 
 ### 第二优先级：增强课设展示效果
 
-1. 在 Streamlit 中显示参数说明。
+1. 增加参数预设与一键加载典型实验配置。
 2. 已支持前端自定义绘制地图（拖动上色 + 保存为 CSV）；后续可再补充直接上传 CSV 地图文件。
 3. 增加每轮最优值表格展示。
-4. 增加“运行耗时”显示。
-5. 增加“是否成功到达终点的蚂蚁数量”统计。
+4. 增加运行历史列表，方便在界面内对比多次实验。
+5. 增加成功率分析展示，例如每轮成功蚂蚁数占比曲线。
 
 ### 第三优先级：增强算法质量
 
@@ -870,10 +899,10 @@ streamlit run scripts/run_streamlit.py
 
 ### 第四优先级：课设材料补完
 
-1. 新建课程设计正文报告，例如 `docs/05_COURSE_DESIGN_REPORT.md`
-2. 新建答辩提纲文档，例如 `docs/04_DEFENSE_NOTES.md`
-3. 整理算法流程图
-4. 进一步美化实验截图和参数对比表
+1. 按学校模板整理 `docs/05_COURSE_DESIGN_REPORT.md` 的封面、目录、页眉页脚和格式。
+2. 新建答辩提纲文档，例如 `docs/04_DEFENSE_NOTES.md`。
+3. 整理算法流程图并补入报告。
+4. 补入实际运行截图，进一步美化实验截图和参数对比表。
 
 ---
 

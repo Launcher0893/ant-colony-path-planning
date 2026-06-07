@@ -13,9 +13,11 @@
    - 环境配置、命令行运行、Streamlit 运行、测试与常见问题
 3. [04_EXPERIMENT_RESULTS.md](./04_EXPERIMENT_RESULTS.md)
    - 真实参数实验结果、图表和结论
-4. [00_REF_GA_PATH_PLANNING.md](./00_REF_GA_PATH_PLANNING.md)
+4. [05_COURSE_DESIGN_REPORT.md](./05_COURSE_DESIGN_REPORT.md)
+   - 课程设计正文报告草稿，面向最终提交材料整理
+5. [00_REF_GA_PATH_PLANNING.md](./00_REF_GA_PATH_PLANNING.md)
    - 老师给的遗传算法参考项目分析，帮助理解“为什么本项目不直接照搬参考实现”
-5. [02_EXPERIMENT_LOG.md](./02_EXPERIMENT_LOG.md)
+6. [02_EXPERIMENT_LOG.md](./02_EXPERIMENT_LOG.md)
    - 后续扩展实验时可复用的记录模板
 
 ---
@@ -44,6 +46,10 @@
 - 当前项目已经完成的一轮真实参数实验
 - 包含实验目标、参数组、结果表、图片引用和结果分析
 
+### `05_COURSE_DESIGN_REPORT.md`
+- 当前课程设计正文报告草稿
+- 汇总需求分析、系统设计、算法实现、实验结果、总结与附录
+
 ---
 
 ## 3. 当前项目状态概览
@@ -58,11 +64,12 @@
 - 自动化测试
 - 实验结果输出与汇总
 - 真实实验文档
+- 课程设计正文报告草稿
 
 当前仍可继续补充的主要内容是：
 
-- 学校格式的课程设计正文报告
-- 算法流程图
+- 按学校模板进一步排版课程设计报告
+- 补入实际运行截图和算法流程图资源
 - 答辩提纲
 - 更多对照实验与更细测试
 

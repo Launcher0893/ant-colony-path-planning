@@ -65,14 +65,53 @@ python main.py --no-plot --save-output ...
 - 路径长度：
 - 最优轮次：
 - 总成功路径数：
+- 平均每轮成功数：
+- 历史最优曲线最终值：
+- 本轮最优曲线最终值：
+- 本轮平均曲线最终值：
 - 运行耗时：
+- 汇总结果目录：
 
 ### 4.1 结果文件
 
 - `result.json`
 - `path_plot.png`
 - `convergence_plot.png`
+- `iteration_length_plot.png`
+- `success_count_plot.png`
 - `path.txt`
+- `experiment_label.txt`（如本次实验设置了参数组标签）
+
+说明：无解结果中的非有限路径长度会在 `result.json` 中规范化为标准 JSON 的 `null`，避免写出非标准 `Infinity`。
+
+### 4.2 汇总字段
+
+新版 `scripts/summarize_results.py` 会在 `summary.csv` 中保留以下字段，手工记录实验时也建议按这些字段对齐：
+
+- `experiment_label`
+- `surface`
+- `map_name`
+- `found`
+- `path_length`
+- `best_iteration`
+- `runtime_seconds`
+- `total_successful_paths`
+- `avg_success_count`
+- `best_length_curve_final`
+- `iteration_best_curve_final`
+- `iteration_mean_curve_final`
+- `ant_count`
+- `iterations`
+- `alpha`
+- `beta`
+- `evaporation_rate`
+- `pheromone_deposit_q`
+- `initial_pheromone`
+- `local_evaporation_rate`
+- `elite_enabled`
+- `elite_weight`
+- `random_seed`
+- `result_dir`
 
 ---
 

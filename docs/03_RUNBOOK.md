@@ -70,7 +70,7 @@ ant-colony-path-planning/
 
 说明：`streamlit-drawable-canvas` 已停更，且依赖 Streamlit 内部函数 `image_to_url`。
 在 Streamlit 1.50 上，`webapp.py` 启动时会打一个兼容补丁修正该函数的位置与签名变化；
-若补丁或组件不可用，自定义地图会自动回退到逐格点击版，界面不会崩溃。
+若补丁、组件导入或组件运行期调用失败，自定义地图会自动回退到逐格点击版，界面不会崩溃。
 
 ---
 
@@ -286,11 +286,13 @@ python main.py --map data/maps/medium.csv --ants 60 --iterations 120 --alpha 1.0
 python main.py --no-plot --save-output --output-dir data/outputs/cli --map data/maps/medium.csv
 ```
 
-一次保存会生成一个独立目录，目录下包含：
+一次保存会生成一个带微秒时间戳的独立目录，避免同一秒重复运行时覆盖结果。目录下包含：
 
 - `result.json`
 - `path_plot.png`
 - `convergence_plot.png`
+- `iteration_length_plot.png`
+- `success_count_plot.png`
 - `path.txt`
 
 额外统计字段会保存在 `result.json` 中，包括：
@@ -301,6 +303,8 @@ python main.py --no-plot --save-output --output-dir data/outputs/cli --map data/
 - `local_evaporation_rate`
 - `elite_enabled`
 - `elite_weight`
+
+说明：无解地图中的无穷大路径长度会在 `result.json` 中保存为标准 JSON 的 `null`，避免写出非标准 `Infinity`。
 
 ### 7.8 CLI 正常输出示例
 
@@ -387,16 +391,17 @@ streamlit run scripts/run_streamlit.py
    - 起点、终点画笔即使划过多个格子，也只落一个代表格，保持全图唯一。
 5. 界面会实时显示起点数量和终点数量；只有恰好一个起点和一个终点时才能保存或规划。
 6. 在“保存地图”处可选填地图名称：
-   - 填写名称则保存为 `<名称>.csv`。
+   - 填写名称则保存为 `<名称>.csv`；若同名文件已存在，会自动追加 `_1`、`_2` 等后缀，避免覆盖已有地图。
    - 留空则按 `custom_<时间戳>_<序号>.csv` 自动命名。
    - 保存到 `data/maps/` 后，可在“示例地图”来源中重新选择复用。
+   - 如果保存后直接规划并保存结果，输出元数据会记录该自定义地图 CSV 路径。
 7. 绘制完成后，点击侧边栏“开始规划”，即可在自定义地图上运行蚁群算法并查看结果。
 
 说明：
 
 - 拖动绘制依赖 `streamlit-drawable-canvas` 组件。
 - 该组件较旧，本项目在 `webapp.py` 启动时打了一个兼容补丁以适配新版 Streamlit 的 `image_to_url` 接口。
-- 若组件不可用，编辑器会自动回退到“逐格点击”绘制模式，功能不丢，只是手感退化为点一次画一格。
+- 若组件不可用或运行期调用失败，编辑器会自动回退到“逐格点击”绘制模式，功能不丢，只是手感退化为点一次画一格。
 
 ---
 
@@ -425,6 +430,7 @@ python -m unittest discover -s tests
 - [test_summarize_results.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_summarize_results.py)
 - [test_visualization.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_visualization.py)
 - [test_custom_map.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_custom_map.py)
+- [test_webapp.py](/abs/path/D:/Program Files/Code/VS Code/Python/ant-colony-path-planning/tests/test_webapp.py)
 
 覆盖内容包括：
 
@@ -433,16 +439,17 @@ python -m unittest discover -s tests
 - 8 邻域与防穿角
 - 可解地图求解
 - 无解地图处理
-- 参数校验
+- 参数校验（含非有限值与错误类型）
 - CLI 参数文件加载
-- 输出保存逻辑
-- 地图生成脚本
+- 输出保存逻辑（含标准 JSON 与独立输出目录）
+- 地图生成脚本（含尺寸与输出名称校验）
 - 地图目录与元数据一致性
-- 结果汇总脚本
+- 结果汇总脚本（含主要 ACO 参数字段）
 - 收敛图绘制函数
-- 自定义地图画笔、笔画栅格化、命名与保存
+- 自定义地图画笔、笔画栅格化、命名与保存（含同名自动改名与安全文件名）
 - 自定义地图保存后能被加载器正确读回
 - 地图目录元数据的兜底逻辑
+- Web 自定义地图画布降级选择逻辑
 
 ### 9.3 运行单个测试文件
 
@@ -682,6 +689,11 @@ pip install -r requirements.txt
 python scripts/generate_maps.py --mode dense --rows 12 --cols 12 --density 0.25 --seed 42 --name generated_dense_demo
 ```
 
+约束：
+
+- `--rows` 和 `--cols` 必须至少为 `2`
+- `--name` 会被清洗成安全文件名，不能写出到 `data/maps/generated/` 之外
+
 生成结果默认放在：
 
 - `data/maps/generated/`
@@ -698,7 +710,7 @@ python scripts/generate_maps.py --mode dense --rows 12 --cols 12 --density 0.25 
 
 - 扫描 `data/outputs/` 下所有 `result.json`
 - 生成 `summary.csv`
-- 汇总关键指标，便于后续做实验对比和报告整理
+- 汇总关键指标和主要 ACO 参数，便于后续做实验对比、复现实验配置和报告整理
 
 示例：
 

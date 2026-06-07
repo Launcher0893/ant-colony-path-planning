@@ -51,6 +51,8 @@
 | `high_iterations` | 12 | 160 | 1.0 | 2.0 | 0.30 | 0.05 | 关闭 |
 | `strong_pheromone` | 12 | 100 | 1.2 | 2.5 | 0.25 | 0.05 | 开启，`elite_weight=2.0` |
 
+除表中列出的差异外，本轮实验统一使用 `pheromone_deposit_q=100.0`、`initial_pheromone=1.0`、`random_seed=42`。新版 `summary.csv` 同时保留 `experiment_label`、`ant_count`、`iterations`、`pheromone_deposit_q`、`initial_pheromone` 等字段，便于从汇总表追溯完整参数。
+
 ---
 
 ## 5. 实测结果表

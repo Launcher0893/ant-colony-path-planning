@@ -18,8 +18,9 @@
 - 支持 `8` 邻域路径规划，禁止对角穿角
 - 支持配置蚂蚁数量、迭代次数、`alpha`、`beta`、全局/局部 `rho`、`Q`、初始信息素和精英强化
 - Streamlit 侧边栏支持参数中文释义
-- 支持显式保存路径图、收敛曲线、路径坐标和结构化结果
+- 支持显式保存路径图、收敛曲线、路径坐标和标准 JSON 结构化结果
 - 支持历史最优、本轮最优/平均、成功路径数三类收敛分析
+- Streamlit 支持自定义地图绘制、同名自动改名保存和结果来源追踪
 - 提供手工地图集和地图生成脚本
 - 每种地图类型都开始提供多张变体地图
 - 提供结果汇总脚本和实验记录模板
@@ -123,12 +124,16 @@ streamlit run scripts/run_streamlit.py
 python scripts/generate_maps.py --mode dense --rows 12 --cols 12 --density 0.25 --seed 42 --name generated_dense_demo
 ```
 
+生成地图的行列数必须至少为 `2 x 2`；`--name` 会被清洗为安全文件名，输出固定在 `data/maps/generated/`。
+
 ## 结果统计
 汇总 `data/outputs/` 下所有实验结果：
 
 ```bash
 python scripts/summarize_results.py --input-dir data/outputs --output-file data/outputs/summary.csv
 ```
+
+汇总表会保留路径指标、运行耗时、成功路径数量以及主要 ACO 参数，便于复现实验配置。
 
 ## 测试
 ```bash
