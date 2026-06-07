@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from datetime import datetime
 from pathlib import Path
 
@@ -24,10 +25,9 @@ def save_planning_artifacts(
     surface: str,
     output_root: str | Path,
 ) -> Path:
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     map_name = (grid_map.source.stem if grid_map.source else "unknown_map").replace(" ", "_")
-    run_dir = Path(output_root) / f"{timestamp}_{map_name}"
-    run_dir.mkdir(parents=True, exist_ok=True)
+    run_dir = _create_unique_run_dir(Path(output_root), f"{timestamp}_{map_name}")
 
     path_figure = plot_grid_map(grid_map, result)
     path_figure.savefig(run_dir / "path_plot.png", bbox_inches="tight")
@@ -84,8 +84,33 @@ def save_planning_artifacts(
         "history_success_count": result.history_success_count,
     }
     (run_dir / "result.json").write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2),
+        json.dumps(_json_safe(payload), ensure_ascii=False, indent=2, allow_nan=False),
         encoding="utf-8",
     )
 
     return run_dir
+
+
+def _create_unique_run_dir(output_root: Path, directory_name: str) -> Path:
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    for sequence in range(1000):
+        suffix = "" if sequence == 0 else f"_{sequence}"
+        candidate = output_root / f"{directory_name}{suffix}"
+        try:
+            candidate.mkdir()
+            return candidate
+        except FileExistsError:
+            continue
+
+    raise RuntimeError(f"Could not create a unique output directory under {output_root}.")
+
+
+def _json_safe(value):
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    return value
