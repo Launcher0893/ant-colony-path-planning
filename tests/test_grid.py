@@ -40,6 +40,14 @@ class GridTests(unittest.TestCase):
         path = [(0, 0), (0, 1), (1, 2)]
         self.assertAlmostEqual(path_length(path), 1.0 + 2 ** 0.5)
 
+    def test_path_length_rejects_jump_step(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Invalid path step"):
+            path_length([(0, 0), (0, 2)])
+
+    def test_path_length_rejects_zero_step(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Invalid path step"):
+            path_length([(0, 0), (0, 0)])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from pathlib import Path
 
 import numpy as np
@@ -43,23 +44,47 @@ class AcoParams:
     random_seed: int | None = 42
 
     def validate(self) -> None:
-        if self.ant_count <= 0:
+        ant_count = _require_int("ant_count", self.ant_count)
+        iterations = _require_int("iterations", self.iterations)
+        alpha = _require_finite_number("alpha", self.alpha)
+        beta = _require_finite_number("beta", self.beta)
+        evaporation_rate = _require_finite_number("evaporation_rate", self.evaporation_rate)
+        pheromone_deposit_q = _require_finite_number(
+            "pheromone_deposit_q",
+            self.pheromone_deposit_q,
+        )
+        initial_pheromone = _require_finite_number(
+            "initial_pheromone",
+            self.initial_pheromone,
+        )
+        local_evaporation_rate = _require_finite_number(
+            "local_evaporation_rate",
+            self.local_evaporation_rate,
+        )
+        elite_weight = _require_finite_number("elite_weight", self.elite_weight)
+
+        if not isinstance(self.elite_enabled, bool):
+            raise ValueError("elite_enabled must be a boolean.")
+        if self.random_seed is not None:
+            _require_int("random_seed", self.random_seed)
+
+        if ant_count <= 0:
             raise ValueError("ant_count must be greater than 0.")
-        if self.iterations <= 0:
+        if iterations <= 0:
             raise ValueError("iterations must be greater than 0.")
-        if self.alpha < 0:
+        if alpha < 0:
             raise ValueError("alpha must be non-negative.")
-        if self.beta < 0:
+        if beta < 0:
             raise ValueError("beta must be non-negative.")
-        if not 0 <= self.evaporation_rate < 1:
+        if not 0 <= evaporation_rate < 1:
             raise ValueError("evaporation_rate must be in [0, 1).")
-        if self.pheromone_deposit_q <= 0:
+        if pheromone_deposit_q <= 0:
             raise ValueError("pheromone_deposit_q must be greater than 0.")
-        if self.initial_pheromone <= 0:
+        if initial_pheromone <= 0:
             raise ValueError("initial_pheromone must be greater than 0.")
-        if not 0 <= self.local_evaporation_rate < 1:
+        if not 0 <= local_evaporation_rate < 1:
             raise ValueError("local_evaporation_rate must be in [0, 1).")
-        if self.elite_weight < 0:
+        if elite_weight < 0:
             raise ValueError("elite_weight must be non-negative.")
 
 
@@ -76,3 +101,18 @@ class PlanningResult:
     total_successful_paths: int
     runtime_seconds: float
     message: str
+
+
+def _require_int(name: str, value: object) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{name} must be an integer.")
+    return value
+
+
+def _require_finite_number(name: str, value: object) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{name} must be a finite number.")
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(f"{name} must be a finite number.")
+    return number

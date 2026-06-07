@@ -58,8 +58,10 @@ def path_length(path: list[Coordinate]) -> float:
         col_delta = abs(current[1] - nxt[1])
         if row_delta == 1 and col_delta == 1:
             total += DIAGONAL_COST
-        else:
+        elif (row_delta == 1 and col_delta == 0) or (row_delta == 0 and col_delta == 1):
             total += ORTHOGONAL_COST
+        else:
+            raise ValueError(f"Invalid path step from {current} to {nxt}.")
     return total
 
 

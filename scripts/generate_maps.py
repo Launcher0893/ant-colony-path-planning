@@ -13,6 +13,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from aco_path_planning.config import DEFAULT_GENERATED_MAP_DIR
+from aco_path_planning.custom_map import sanitize_map_name
 
 
 def parse_args() -> argparse.Namespace:
@@ -32,7 +33,7 @@ def main() -> int:
     grid = build_grid(args.mode, args.rows, args.cols, args.density, rng)
     output_dir = DEFAULT_GENERATED_MAP_DIR
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"{args.name}.csv"
+    output_path = output_dir / f"{safe_output_stem(args.name)}.csv"
     write_csv(output_path, grid)
     print(output_path)
     return 0
@@ -45,6 +46,9 @@ def build_grid(
     density: float,
     rng: random.Random,
 ) -> list[list[int]]:
+    if rows < 2 or cols < 2:
+        raise ValueError("Generated maps must be at least 2 x 2.")
+
     grid = [[0 for _ in range(cols)] for _ in range(rows)]
     start = (0, 0)
     goal = (rows - 1, cols - 1)
@@ -92,6 +96,13 @@ def write_csv(path: Path, grid: list[list[int]]) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
         writer.writerows(grid)
+
+
+def safe_output_stem(name: str) -> str:
+    stem = sanitize_map_name(name)
+    if not stem:
+        raise ValueError("Output map name must contain at least one safe character.")
+    return stem
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import unittest
 from pathlib import Path
 import sys
@@ -48,6 +49,33 @@ class AcoParamsTests(unittest.TestCase):
     def test_validate_rejects_negative_elite_weight(self) -> None:
         with self.assertRaisesRegex(ValueError, "elite_weight"):
             AcoParams(elite_weight=-0.1).validate()
+
+    def test_validate_rejects_non_finite_float_values(self) -> None:
+        for field_name in (
+            "alpha",
+            "beta",
+            "evaporation_rate",
+            "pheromone_deposit_q",
+            "initial_pheromone",
+            "local_evaporation_rate",
+            "elite_weight",
+        ):
+            with self.subTest(field_name=field_name):
+                params = AcoParams(**{field_name: math.inf})
+                with self.assertRaisesRegex(ValueError, field_name):
+                    params.validate()
+
+    def test_validate_rejects_invalid_random_seed_type(self) -> None:
+        with self.assertRaisesRegex(ValueError, "random_seed"):
+            AcoParams(random_seed="42").validate()
+
+    def test_validate_rejects_invalid_elite_enabled_type(self) -> None:
+        with self.assertRaisesRegex(ValueError, "elite_enabled"):
+            AcoParams(elite_enabled="yes").validate()
+
+    def test_validate_rejects_boolean_integer_fields(self) -> None:
+        with self.assertRaisesRegex(ValueError, "ant_count"):
+            AcoParams(ant_count=True).validate()
 
 
 if __name__ == "__main__":

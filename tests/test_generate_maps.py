@@ -53,6 +53,19 @@ class GenerateMapsTests(unittest.TestCase):
         self.assertEqual(len(rows), 8)
         self.assertTrue(all(len(row) == 8 for row in rows))
 
+    def test_build_grid_rejects_too_small_dimensions(self) -> None:
+        with self.assertRaisesRegex(ValueError, "at least 2 x 2"):
+            generate_maps.build_grid(
+                mode="dense",
+                rows=1,
+                cols=1,
+                density=0.2,
+                rng=random.Random(7),
+            )
+
+    def test_safe_output_stem_strips_path_components(self) -> None:
+        self.assertEqual(generate_maps.safe_output_stem("../bad name"), "bad_name")
+
 
 if __name__ == "__main__":
     unittest.main()
