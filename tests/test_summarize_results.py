@@ -44,6 +44,10 @@ class SummarizeResultsTests(unittest.TestCase):
             self.assertEqual(rows[0]["experiment_label"], "baseline")
             self.assertIn("total_successful_paths", rows[0])
             self.assertIn("avg_success_count", rows[0])
+            self.assertEqual(rows[0]["ant_count"], 30)
+            self.assertEqual(rows[0]["iterations"], 50)
+            self.assertEqual(rows[0]["pheromone_deposit_q"], params.pheromone_deposit_q)
+            self.assertEqual(rows[0]["initial_pheromone"], params.initial_pheromone)
 
             summary_path = Path(temp_dir) / "summary.csv"
             summarize_results.write_summary(summary_path, rows)
@@ -55,6 +59,10 @@ class SummarizeResultsTests(unittest.TestCase):
         self.assertEqual(len(csv_rows), 1)
         self.assertEqual(csv_rows[0]["map_name"], "easy.csv")
         self.assertIn("avg_success_count", csv_rows[0])
+        self.assertEqual(csv_rows[0]["ant_count"], "30")
+        self.assertEqual(csv_rows[0]["iterations"], "50")
+        self.assertIn("pheromone_deposit_q", csv_rows[0])
+        self.assertIn("initial_pheromone", csv_rows[0])
 
 
 if __name__ == "__main__":

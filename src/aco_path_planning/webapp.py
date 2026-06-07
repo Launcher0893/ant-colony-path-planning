@@ -109,6 +109,10 @@ _BRUSH_STROKE_COLORS = {
 _EDITOR_MAX_CANVAS_PX = 560
 
 
+def _should_use_drag_canvas(has_drawable_canvas: bool, drag_disabled: bool) -> bool:
+    return has_drawable_canvas and not drag_disabled
+
+
 def main() -> None:
     defaults = _load_defaults()
 
@@ -422,9 +426,21 @@ def _run_custom_mode(params: AcoParams, save_output: bool, run_clicked: bool) ->
 
     cell_px = max(10, min(30, _EDITOR_MAX_CANVAS_PX // max(grid_rows, grid_cols)))
 
-    if _HAS_DRAWABLE_CANVAS:
-        _render_drag_canvas(grid, grid_rows, grid_cols, cell_px, brush)
-    else:
+    use_drag_canvas = _should_use_drag_canvas(
+        _HAS_DRAWABLE_CANVAS,
+        bool(st.session_state.get("editor_disable_drag_canvas", False)),
+    )
+    if use_drag_canvas:
+        try:
+            _render_drag_canvas(grid, grid_rows, grid_cols, cell_px, brush)
+        except Exception as exc:  # pragma: no cover - depends on component runtime
+            st.session_state["editor_disable_drag_canvas"] = True
+            if not _HAS_IMAGE_COORDS:
+                st.error(f"拖动画布组件运行失败，且点击版组件不可用：{exc}")
+                return
+            st.warning("拖动画布组件运行失败，已自动切换到点击绘制模式。")
+
+    if not use_drag_canvas or st.session_state.get("editor_disable_drag_canvas", False):
         _render_click_canvas(grid, grid_rows, grid_cols, cell_px, brush)
 
     start_count, goal_count = count_markers(grid)
